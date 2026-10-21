@@ -139,7 +139,8 @@ function grip() {
   const readout = $('.grip-readout');
   whenNear(host, async () => {
     const { ScoreView, texFor, fingeringStats } = await loadEngine();
-    const view = new ScoreView(host, { bare: true });
+    // am Telefon kleiner gesetzt, damit das ganze Riff neben den Schaltern sichtbar bleibt
+    const view = new ScoreView(host, { bare: true, scale: innerWidth <= 900 ? 0.68 : 1 });
     const update = () => {
       const technique = ($<HTMLInputElement>('input[name=tech]:checked').value) as 'ofpf' | 'simandl';
       const openStrings = ($<HTMLInputElement>('input[name=open]:checked').value) as 'prefer' | 'neutral' | 'avoid';
@@ -283,6 +284,7 @@ function stub() {
 
 function video() {
   const v = $<HTMLVideoElement>('.grip-video video');
+  if (matchMedia('(max-width: 900px)').matches) return; // am Telefon ausgeblendet
   if (reduce) {
     v.removeAttribute('autoplay');
     v.controls = true;
