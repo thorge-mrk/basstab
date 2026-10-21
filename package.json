@@ -1,0 +1,24 @@
+{
+  "name": "basstab",
+  "version": "1.0.0",
+  "description": "Fotografierte Bassnoten in spielbare Bass-Tabs umwandeln und als PDF speichern",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@coderline/alphatab": "^1.8.4",
+    "@google/genai": "^2.30.0",
+    "jspdf": "^4.2.1"
+  },
+  "devDependencies": {
+    "@coderline/alphatab-vite": "^1.8.4",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.4",
+    "vitest": "^5.0.5"
+  },
+  "private": true,
+  "type": "module"
+}
