@@ -2,7 +2,7 @@ import { parseNotation, serializeNotation, type Diagnostic, type Score } from '.
 import { computeFingering, DEFAULT_SETUP, TUNINGS, type BassSetup } from './fingering';
 import { toAlphaTex } from './alphatex';
 import { Preview, exportPdf } from './render';
-import { DEFAULT_MODEL, prepareImage, recognizeSheet } from './gemini';
+import { DEFAULT_MODEL, MODELS, prepareImage, recognizeSheet } from './gemini';
 import { parseMusicXml } from './musicxml';
 import { DEMO } from './demo';
 
@@ -301,6 +301,30 @@ dropzone.addEventListener('drop', (e) => {
   if (e.dataTransfer?.files) addPhotos(e.dataTransfer.files);
 });
 
+// Modellauswahl
+const modelSelect = $<HTMLSelectElement>('#model-select');
+const modelCustom = $<HTMLInputElement>('#model-custom');
+for (const m of MODELS) modelSelect.add(new Option(m.label, m.id));
+modelSelect.add(new Option('Eigenes Modell…', 'custom'));
+{
+  const saved = store.get('model') || DEFAULT_MODEL;
+  if (MODELS.some((m) => m.id === saved)) modelSelect.value = saved;
+  else {
+    modelSelect.value = 'custom';
+    modelCustom.value = saved;
+    modelCustom.hidden = false;
+  }
+}
+function selectedModel(): string {
+  return modelSelect.value === 'custom' ? modelCustom.value.trim() || DEFAULT_MODEL : modelSelect.value;
+}
+modelSelect.addEventListener('change', () => {
+  modelCustom.hidden = modelSelect.value !== 'custom';
+  if (!modelCustom.hidden) modelCustom.focus();
+  store.set('model', selectedModel());
+});
+modelCustom.addEventListener('change', () => store.set('model', selectedModel()));
+
 function updateKeyHint() {
   $('#key-hint').hidden = !!store.get('apiKey') || photos.length === 0;
 }
@@ -323,8 +347,8 @@ recogBtn.addEventListener('click', async () => {
   const started = performance.now();
   try {
     const prepared = await Promise.all(photos.map((p) => prepareImage(p.file)));
-    statusEl.textContent = 'Gemini liest die Noten… (kann 30–90 s dauern)';
-    const model = store.get('model') || DEFAULT_MODEL;
+    statusEl.textContent = `${modelSelect.selectedOptions[0]?.text.replace(/ \(.*\)$/, '') ?? 'Gemini'} liest die Noten… (kann 30–90 s dauern)`;
+    const model = selectedModel();
     const result = await recognizeSheet(
       prepared,
       apiKey,
@@ -404,13 +428,11 @@ pdfBtn.addEventListener('click', async () => {
 const dlgSettings = $<HTMLDialogElement>('#dlg-settings');
 function openSettings() {
   $<HTMLInputElement>('#set-key').value = store.get('apiKey') ?? '';
-  $<HTMLInputElement>('#set-model').value = store.get('model') || DEFAULT_MODEL;
   dlgSettings.showModal();
 }
 dlgSettings.addEventListener('close', () => {
   if (dlgSettings.returnValue !== 'save') return;
   store.set('apiKey', $<HTMLInputElement>('#set-key').value.trim());
-  store.set('model', $<HTMLInputElement>('#set-model').value.trim() || DEFAULT_MODEL);
   updateKeyHint();
   toast('Einstellungen gespeichert');
 });

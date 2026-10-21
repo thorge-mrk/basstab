@@ -2,7 +2,12 @@
 
 import { GoogleGenAI, MediaResolution, ThinkingLevel, ApiError, type Part } from '@google/genai';
 
-export const DEFAULT_MODEL = 'gemini-3.8-flash';
+export const MODELS = [
+  { id: 'gemini-3.5-flash-lite', label: 'Gemini 3.5 Flash-Lite (schnell, günstig)' },
+  { id: 'gemini-3.8-flash', label: 'Gemini 3.8 Flash (genauer)' },
+  { id: 'gemini-4-argon', label: 'Gemini 4 Argon (stärkstes, teurer)' },
+];
+export const DEFAULT_MODEL = MODELS[0].id;
 
 export interface RecognitionResult {
   notation: string;
@@ -136,8 +141,8 @@ export async function recognizeSheet(
   });
   parts.push({ text: 'Transcribe the bass part on these pages into BassTab notation.' });
 
-  let text = '';
-  try {
+  const run = async (withThinking: boolean) => {
+    let text = '';
     const stream = await ai.models.generateContentStream({
       model,
       contents: [{ role: 'user', parts }],
@@ -145,7 +150,7 @@ export async function recognizeSheet(
         systemInstruction: SYSTEM_PROMPT,
         responseMimeType: 'application/json',
         responseJsonSchema: RESPONSE_SCHEMA,
-        thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH },
+        ...(withThinking ? { thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH } } : {}),
         mediaResolution: MediaResolution.MEDIA_RESOLUTION_HIGH,
         abortSignal: signal,
       },
@@ -154,11 +159,23 @@ export async function recognizeSheet(
       text += chunk.text ?? '';
       onProgress(text.length);
     }
+    return text;
+  };
+
+  let text: string;
+  try {
+    try {
+      text = await run(true);
+    } catch (e) {
+      // Kleinere Modelle (z. B. Flash-Lite) unterstützen evtl. kein thinkingLevel → ohne erneut versuchen
+      if (e instanceof ApiError && e.status === 400 && /think/i.test(e.message)) text = await run(false);
+      else throw e;
+    }
   } catch (e) {
     if (e instanceof ApiError) {
       if (e.status === 400 && /API key/i.test(e.message)) throw new Error('API-Key ungültig. Bitte in den Einstellungen prüfen.');
       if (e.status === 403) throw new Error('Zugriff verweigert (403). Ist der API-Key für die Gemini API freigeschaltet?');
-      if (e.status === 404) throw new Error(`Modell "${model}" nicht gefunden. Bitte Modellnamen in den Einstellungen prüfen.`);
+      if (e.status === 404) throw new Error(`Modell "${model}" nicht gefunden. Bitte ein anderes Modell wählen.`);
       if (e.status === 429) throw new Error('Rate-Limit/Kontingent erreicht (429). Kurz warten oder Abrechnung im AI Studio prüfen.');
       throw new Error(`Gemini-Fehler ${e.status}: ${e.message}`);
     }

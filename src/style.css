@@ -342,6 +342,32 @@ a {
   line-height: 1;
 }
 
+.model-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.field.inline {
+  margin-top: 0;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+#model-custom {
+  font: inherit;
+  font-size: 0.88rem;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 5px 8px;
+  flex: 1 1 200px;
+  min-width: 0;
+}
+
 .row {
   display: flex;
   align-items: center;

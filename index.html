@@ -49,6 +49,12 @@
               <small>Mehrere Seiten in Reihenfolge. Möglichst gerade, hell, ganze Seite im Bild.</small>
             </label>
             <ol class="thumbs" id="thumbs"></ol>
+            <div class="model-row">
+              <label class="field inline">KI-Modell
+                <select id="model-select"></select>
+              </label>
+              <input type="text" id="model-custom" placeholder="Modell-ID, z. B. gemini-3.5-flash" aria-label="Eigene Modell-ID" hidden />
+            </div>
             <div class="row">
               <button class="btn primary" id="btn-recognize" type="button" disabled>Noten erkennen</button>
               <button class="btn ghost" id="btn-cancel" type="button" hidden>Abbrechen</button>
@@ -154,13 +160,6 @@
           <input type="password" id="set-key" autocomplete="off" placeholder="AIza…" />
         </label>
         <p class="hint">Key erstellen: <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>. Der Key wird nur in diesem Browser gespeichert (localStorage) und direkt an die Gemini API geschickt. Deine Fotos gehen an Google zur Erkennung.</p>
-        <label class="field">Modell
-          <input type="text" id="set-model" list="models" />
-          <datalist id="models">
-            <option value="gemini-3.8-flash"></option>
-            <option value="gemini-4-argon"></option>
-          </datalist>
-        </label>
         <div class="row end">
           <button class="btn ghost" value="cancel" formnovalidate>Abbrechen</button>
           <button class="btn primary" value="save" id="set-save">Speichern</button>
