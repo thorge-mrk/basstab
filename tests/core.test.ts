@@ -36,7 +36,7 @@ describe('Notation', () => {
   it('Serialisierung ist verlustfrei', () => {
     const a = parseNotation(SAMPLE).score;
     const b = parseNotation(serializeNotation(a)).score;
-    expect(b).toEqual({ ...a, measures: a.measures.map((m, i) => ({ ...m, line: b.measures[i].line })) });
+    expect(b).toEqual({ ...a, measures: a.measures.map((m, i) => ({ ...m, line: b.measures[i].line, src: b.measures[i].src })) });
   });
 });
 
@@ -78,5 +78,57 @@ describe('alphaTex', () => {
     const expectedBars = score.measures.reduce((n, m) => n + (m.multiRest ?? 1), 0);
     expect(s.masterBars.length).toBe(expectedBars);
     expect(s.masterBars[23].isRepeatStart).toBe(true);
+  });
+});
+
+describe('Ausdruck', () => {
+  const SRC = 'key: C\n!mf C3/4-. \\< D3-> E3-- \\! F3-^ | !p "tutti" G3/2\\fermata \\> r/4 A3/4-x | B2/4-g C3-/ D3-h E3 | r/1\\fermata |';
+  it('parst Dynamik, Gabeln, Artikulationen und Text', () => {
+    const { score, diagnostics } = parseNotation(SRC);
+    expect(diagnostics).toEqual([]);
+    const [m1, m2, m3, m4] = score.measures.map((m) => m.events);
+    expect(m1[0]).toMatchObject({ dynamic: 'mf', artics: ['staccato'] });
+    expect(m1[1]).toMatchObject({ hairpin: 'cresc', artics: ['accent'] });
+    expect(m1[2]).toMatchObject({ hairpin: 'cresc', artics: ['tenuto'] });
+    expect(m1[3].hairpin).toBeUndefined();
+    expect(m2[0]).toMatchObject({ dynamic: 'p', text: 'tutti', artics: ['fermata'] });
+    expect(m2[1]).toMatchObject({ kind: 'rest', hairpin: 'dim' });
+    expect(m2[2]).toMatchObject({ artics: ['dead'] });
+    expect(m3.map((e) => e.artics?.[0])).toEqual(['ghost', 'slide', 'hammer', undefined]);
+    expect(m4[0]).toMatchObject({ kind: 'rest', artics: ['fermata'] });
+  });
+
+  it('Serialisierung behält Ausdruck', () => {
+    const a = parseNotation(SRC).score;
+    const b = parseNotation(serializeNotation(a)).score;
+    expect(b.measures.map((m) => m.events)).toEqual(a.measures.map((m) => m.events));
+  });
+
+  it('überträgt Ausdruck nach alphaTab', () => {
+    const { score } = parseNotation(SRC);
+    const { fingering } = computeFingering(score, DEFAULT_SETUP);
+    const tex = toAlphaTex(score, fingering, DEFAULT_SETUP, { showNotation: true, showTab: true });
+    const imp = new alphaTab.importer.AlphaTexImporter();
+    imp.initFromString(tex, new alphaTab.Settings());
+    const beats = imp.readScore().tracks[0].staves[0].bars.flatMap((b) => b.voices[0].beats);
+    expect(beats[0].dynamics).toBe(alphaTab.model.DynamicValue.MF);
+    expect(beats[0].notes[0].isStaccato).toBe(true);
+    expect(beats[1].crescendo).toBe(alphaTab.model.CrescendoType.Crescendo);
+    expect(beats[1].notes[0].accentuated).toBe(alphaTab.model.AccentuationType.Normal);
+    expect(beats[3].notes[0].accentuated).toBe(alphaTab.model.AccentuationType.Heavy);
+    expect(beats[4].dynamics).toBe(alphaTab.model.DynamicValue.P);
+    expect(beats[4].text).toBe('tutti');
+    expect(beats[4].fermata).not.toBeNull();
+    expect(beats[6].notes[0].isDead).toBe(true);
+    expect(beats[7].notes[0].isGhost).toBe(true);
+  });
+});
+
+describe('Quelltext-Bereiche', () => {
+  it('liefert pro Takt den bearbeitbaren Bereich', () => {
+    const src = 'key: C\n\n|: C3/4 D3 E3 F3 | [section A] G3/1 :| R |]\n';
+    const { score } = parseNotation(src);
+    const slices = score.measures.map((m) => src.slice(m.src.start, m.src.end).trim());
+    expect(slices).toEqual(['C3/4 D3 E3 F3', '[section A] G3/1', 'R']);
   });
 });

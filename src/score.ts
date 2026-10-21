@@ -21,24 +21,46 @@ export interface NoteHead {
   forcedString?: number;
 }
 
-export interface NoteEvent {
+export const DYNAMICS = ['ppp', 'pp', 'p', 'mp', 'mf', 'f', 'ff', 'fff'] as const;
+export type Dynamic = (typeof DYNAMICS)[number];
+
+export type Articulation =
+  | 'staccato' | 'accent' | 'tenuto' | 'marcato' | 'fermata'
+  | 'dead' | 'ghost' | 'slide' | 'hammer' | 'slap' | 'pop';
+
+/** Suffix-Zeichen nach einer Note, z. B. `F3/8-.` (Staccato) oder `C3/4->` (Akzent). */
+export const ARTIC_SUFFIX: Record<string, Articulation> = {
+  '-.': 'staccato', '->': 'accent', '--': 'tenuto', '-^': 'marcato', '\\fermata': 'fermata',
+  '-x': 'dead', '-g': 'ghost', '-/': 'slide', '-h': 'hammer', '-s': 'slap', '-p': 'pop',
+};
+
+const ARTIC_BY_NAME = Object.fromEntries(Object.entries(ARTIC_SUFFIX).map(([k, v]) => [v, k])) as Record<Articulation, string>;
+
+interface Expression {
+  text?: string;
+  /** Dynamik ab diesem Ereignis */
+  dynamic?: Dynamic;
+  /** Ereignis liegt unter einer Crescendo-/Decrescendo-Gabel */
+  hairpin?: 'cresc' | 'dim';
+  artics?: Articulation[];
+}
+
+export interface NoteEvent extends Expression {
   kind: 'note';
   notes: NoteHead[];
   duration: Duration;
   dots: number;
   tieToNext: boolean;
   tuplet?: number;
-  text?: string;
 }
 
-export interface RestEvent {
+export interface RestEvent extends Expression {
   kind: 'rest';
   duration: Duration;
   dots: number;
   tuplet?: number;
   /** Ganztaktpause unabhängig von der Taktart. */
   fullMeasure?: boolean;
-  text?: string;
 }
 
 export type MusicEvent = NoteEvent | RestEvent;
@@ -63,6 +85,8 @@ export interface Measure {
   /** Mehrtaktpause: dieser "Takt" steht für n leere Takte. */
   multiRest?: number;
   line: number;
+  /** Zeichenbereich des Taktinhalts im Quelltext (ohne Taktstrich) – zum gezielten Bearbeiten */
+  src: { start: number; end: number };
 }
 
 export interface Score {
@@ -157,14 +181,26 @@ const TOKEN_RE = new RegExp(
     '(?<tupletOpen>\\{\\s*\\d+)',
     '(?<tupletClose>\\})',
     '(?<chordOpen>\\()',
-    '(?<chordClose>\\)(?:/\\d+)?\\.*~?)',
+    '(?<dynamic>!(?:ppp|pp|p|mp|mf|fff|ff|f|sfz|sf|fz|fp)(?![a-z]))',
+    '(?<hairpin>\\\\[<>!])',
+    '(?<chordClose>\\)(?:/\\d+)?\\.*~?(?:-[.>^\\-xg/hsp]|\\\\fermata)*)',
     '(?<bar>:\\|:|:\\|(?:x\\d+)?|\\|:|\\|\\||\\|\\]|\\|)',
-    '(?<note>[A-G](?:##|bb|#|b|n|x)?-?\\d(?:@\\d)?(?:/\\d+)?\\.*~?)',
-    '(?<rest>r(?:/\\d+)?\\.*)',
-    '(?<fullrest>R)',
+    '(?<note>[A-G](?:##|bb|#|b|n|x)?-?\\d(?:@\\d)?(?:/\\d+)?\\.*~?(?:-[.>^\\-xg/hsp]|\\\\fermata)*)',
+    '(?<rest>r(?:/\\d+)?\\.*(?:\\\\fermata)?)',
+    '(?<fullrest>R(?:\\\\fermata)?)',
   ].join('|'),
   'gy',
 );
+
+const ARTIC_RE = /((?:-[.>^\-xg/hsp]|\\fermata)*)$/;
+
+/** Trennt angehängte Artikulationen ab: "F3/8-.->" → ["F3/8", ["staccato","accent"]] */
+function splitArtics(tok: string): [string, Articulation[]] {
+  const suffix = ARTIC_RE.exec(tok)![1];
+  if (!suffix) return [tok, []];
+  const artics = (suffix.match(/-.|\\fermata/g) ?? []).map((a) => ARTIC_SUFFIX[a]).filter(Boolean);
+  return [tok.slice(0, tok.length - suffix.length), [...new Set(artics)]];
+}
 
 interface ParseState {
   key: number;
@@ -225,6 +261,7 @@ export function parseNotation(src: string): ParseResult {
   }
 
   const body = lines.slice(bodyStart).join('\n');
+  const bodyOffset = lines.slice(0, bodyStart).reduce((n, l) => n + l.length + 1, 0);
   let lineNo = bodyStart + 1;
 
   const st: ParseState = {
@@ -236,12 +273,31 @@ export function parseNotation(src: string): ParseResult {
     tiedFrom: new Map(),
   };
 
-  const newMeasure = (): Measure => ({ events: [], repeatStart: false, repeatEnd: 0, jumps: [], texts: [], line: lineNo });
+  const newMeasure = (): Measure => ({
+    events: [], repeatStart: false, repeatEnd: 0, jumps: [], texts: [], line: lineNo, src: { start: -1, end: -1 },
+  });
   let cur = newMeasure();
   let curHasContent = false;
   let tuplet: number | undefined;
   let chord: NoteHead[] | null = null;
   let pendingText: string | undefined;
+  let pendingDynamic: Dynamic | undefined;
+  let pendingSforzando = false;
+  let hairpin: 'cresc' | 'dim' | undefined;
+
+  /** Text, Dynamik, Gabel und Artikulationen an ein neues Ereignis hängen. */
+  const expression = (artics: Articulation[]): Expression => {
+    const ex: Expression = {};
+    if (pendingText) ex.text = pendingText;
+    if (pendingDynamic) ex.dynamic = pendingDynamic;
+    if (hairpin) ex.hairpin = hairpin;
+    const all = pendingSforzando && !artics.includes('marcato') ? [...artics, 'marcato' as const] : artics;
+    if (all.length) ex.artics = all;
+    pendingText = undefined;
+    pendingDynamic = undefined;
+    pendingSforzando = false;
+    return ex;
+  };
 
   const err = (message: string, severity: Diagnostic['severity'] = 'error') =>
     diagnostics.push({ line: lineNo, message, severity, measure: score.measures.length + 1 });
@@ -283,17 +339,19 @@ export function parseNotation(src: string): ParseResult {
     return { duration: st.duration, dots: st.dots, tie: m[3] === '~' };
   };
 
-  const pushNote = (notes: NoteHead[], raw: string) => {
+  const pushNote = (notes: NoteHead[], rawTok: string) => {
+    const [raw, artics] = splitArtics(rawTok);
     const d = readDuration(raw);
     if (!d) return;
     st.tiedFrom.clear();
     if (d.tie) for (const n of notes) st.tiedFrom.set(`${n.pitch.step}${n.pitch.octave}`, n.pitch.alter);
-    cur.events.push({ kind: 'note', notes, duration: d.duration, dots: d.dots, tieToNext: d.tie, tuplet, text: pendingText });
-    pendingText = undefined;
+    cur.events.push({ kind: 'note', notes, duration: d.duration, dots: d.dots, tieToNext: d.tie, tuplet, ...expression(artics) });
     curHasContent = true;
   };
 
-  const finishMeasure = (bar: string) => {
+  const finishMeasure = (bar: string, barPos: number) => {
+    if (cur.src.start < 0) cur.src.start = barPos;
+    cur.src.end = barPos;
     if (bar === ':|:' || bar.startsWith(':|')) {
       const x = /x(\d+)/.exec(bar);
       cur.repeatEnd = x ? Number(x[1]) : 2;
@@ -330,6 +388,8 @@ export function parseNotation(src: string): ParseResult {
     }
     if (g.comment !== undefined) continue;
     if (!curHasContent && cur.events.length === 0) cur.line = lineNo;
+    const tokPos = bodyOffset + pos - tok.length;
+    if (g.bar === undefined && cur.src.start < 0) cur.src.start = tokPos;
 
     if (g.bar !== undefined) {
       if (chord) err('Akkord nicht geschlossen: ")" fehlt');
@@ -338,7 +398,7 @@ export function parseNotation(src: string): ParseResult {
         cur.repeatStart = true;
         continue;
       }
-      finishMeasure(tok);
+      finishMeasure(tok, tokPos);
       continue;
     }
     if (g.directive !== undefined) {
@@ -348,6 +408,16 @@ export function parseNotation(src: string): ParseResult {
     }
     if (g.text !== undefined) {
       pendingText = tok.slice(1, -1);
+      continue;
+    }
+    if (g.dynamic !== undefined) {
+      const v = tok.slice(1);
+      if (v === 'sfz' || v === 'sf' || v === 'fz') pendingSforzando = true;
+      else pendingDynamic = (v === 'fp' ? 'f' : v) as Dynamic;
+      continue;
+    }
+    if (g.hairpin !== undefined) {
+      hairpin = tok[1] === '<' ? 'cresc' : tok[1] === '>' ? 'dim' : undefined;
       continue;
     }
     if (g.tupletOpen !== undefined) {
@@ -377,28 +447,35 @@ export function parseNotation(src: string): ParseResult {
       const head = resolvePitch(tok);
       if (!head) continue;
       if (chord) {
-        if (/[/.~]/.test(tok.replace(/^[^/.~]*/, ''))) err('Länge/Bindebogen bei Akkorden hinter ")" schreiben', 'warning');
+        if (/[/.~-]/.test(tok.replace(/^[A-G](##|bb|#|b|n|x)?-?\d(@\d)?/, ''))) err('Länge, Bindebogen und Artikulation bei Akkorden hinter ")" schreiben', 'warning');
         chord.push(head);
       } else pushNote([head], tok);
       continue;
     }
-    if (g.rest !== undefined) {
-      const d = readDuration(tok);
-      if (!d) continue;
-      st.tiedFrom.clear();
-      cur.events.push({ kind: 'rest', duration: d.duration, dots: d.dots, tuplet, text: pendingText });
+    if (g.rest !== undefined || g.fullrest !== undefined) {
+      const fermata = tok.endsWith('\\fermata');
+      const raw = fermata ? tok.slice(0, -'\\fermata'.length) : tok;
+      // Dynamik wartet auf die nächste Note; Text, Gabel und Fermate gehören zur Pause
+      const ex: Expression = {};
+      if (pendingText) ex.text = pendingText;
+      if (hairpin) ex.hairpin = hairpin;
+      if (fermata) ex.artics = ['fermata'];
       pendingText = undefined;
-      curHasContent = true;
-      continue;
-    }
-    if (g.fullrest !== undefined) {
       st.tiedFrom.clear();
-      cur.events.push({ kind: 'rest', duration: 1, dots: 0, fullMeasure: true, text: pendingText });
-      pendingText = undefined;
+      if (g.fullrest !== undefined) {
+        cur.events.push({ kind: 'rest', duration: 1, dots: 0, fullMeasure: true, ...ex });
+      } else {
+        const d = readDuration(raw);
+        if (!d) continue;
+        cur.events.push({ kind: 'rest', duration: d.duration, dots: d.dots, tuplet, ...ex });
+      }
       curHasContent = true;
     }
   }
-  if (curHasContent || cur.repeatStart) finishMeasure('|');
+  if (curHasContent || cur.repeatStart) {
+    // Inhalt endet am letzten Nicht-Leerzeichen
+    finishMeasure('|', bodyOffset + body.trimEnd().length);
+  }
 
   return { score, diagnostics };
 }
@@ -514,6 +591,8 @@ export function serializeNotation(score: Score): string {
   let lastDur: Duration | null = null;
   let lastDots = 0;
   let tied = new Map<string, number>();
+  let curHairpin: 'cresc' | 'dim' | null = null;
+  const articStr = (a?: Articulation[]) => (a ?? []).map((x) => ARTIC_BY_NAME[x]).join('');
   const lineParts: string[] = [];
 
   score.measures.forEach((m, i) => {
@@ -539,9 +618,14 @@ export function serializeNotation(score: Score): string {
         if (e.tuplet) parts.push(`{${e.tuplet}`);
         tuplet = e.tuplet;
       }
+      if ((e.hairpin ?? null) !== curHairpin) {
+        parts.push(e.hairpin === 'cresc' ? '\\<' : e.hairpin === 'dim' ? '\\>' : '\\!');
+        curHairpin = e.hairpin ?? null;
+      }
+      if (e.dynamic) parts.push(`!${e.dynamic}`);
       if (e.text) parts.push(`"${e.text}"`);
       if (e.kind === 'rest' && e.fullMeasure) {
-        parts.push('R');
+        parts.push(`R${articStr(e.artics)}`);
         tied = new Map();
         continue;
       }
@@ -552,7 +636,7 @@ export function serializeNotation(score: Score): string {
         lastDots = e.dots;
       }
       if (e.kind === 'rest') {
-        parts.push(`r${dur}`);
+        parts.push(`r${dur}${articStr(e.artics)}`);
         tied = new Map();
         continue;
       }
@@ -569,7 +653,8 @@ export function serializeNotation(score: Score): string {
       tied = new Map();
       if (e.tieToNext) for (const n of e.notes) tied.set(`${n.pitch.step}${n.pitch.octave}`, n.pitch.alter);
       const tie = e.tieToNext ? '~' : '';
-      parts.push(heads.length === 1 ? `${heads[0]}${dur}${tie}` : `(${heads.join(' ')})${dur}${tie}`);
+      const art = articStr(e.artics);
+      parts.push(heads.length === 1 ? `${heads[0]}${dur}${tie}${art}` : `(${heads.join(' ')})${dur}${tie}${art}`);
     }
     if (tuplet) parts.push('}');
 

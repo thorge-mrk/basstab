@@ -1,0 +1,100 @@
+/* BassTab – gemeinsame Gestaltung: Kopisten-Chart. Kühles Notenpapier, eine Petrol-Tinte, eckige Formen. */
+:root {
+  --paper: #f7f9f8;
+  --white: #ffffff;
+  --tone: #ebf0ee; /* eine Tonstufe unter dem Papier */
+  --tone-2: #dfe7e5;
+  --ink: #06525c; /* die eine Tinte: Titel, Flächen, Aktion */
+  --text: #0b2f33; /* Fließtext: dieselbe Tinte, tiefer gemischt */
+  --text-2: #3b5b5f; /* zweite Stufe, 7:1 auf Weiß */
+  --line: #d3dedb; /* 1px-Kanten in der App */
+  --control: #a9bcb8;
+  --on-ink: #f7f9f8;
+  --pencil: #5d5f5e; /* Graphit – nur für Bleistift-Notizen auf Blättern */
+  --error: #a3261c;
+  --error-tone: #fbe9e7;
+  --warn: #7a5200;
+  --warn-tone: #fdf3d6;
+
+  --font: 'TikTok Sans Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-hand: 'Reenie Beanie', 'Bradley Hand', cursive;
+  --mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+
+  color-scheme: light;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--text);
+  font: 400 1rem/1.5 var(--font);
+  font-optical-sizing: auto;
+}
+
+::selection {
+  background: var(--ink);
+  color: var(--on-ink);
+}
+
+:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 3px;
+}
+
+a {
+  color: var(--ink);
+  text-underline-offset: 0.18em;
+  text-decoration-thickness: 1px;
+}
+
+a:hover {
+  text-decoration-thickness: 2px;
+}
+
+code,
+.code-input,
+.code-area {
+  font-family: var(--mono);
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+}
+
+.skip {
+  position: absolute;
+  left: 16px;
+  top: -60px;
+  background: var(--ink);
+  color: var(--on-ink);
+  padding: 10px 14px;
+  z-index: 100;
+}
+
+.skip:focus {
+  top: 12px;
+}
+
+/* Scrollbalken in der Tinte */
+* {
+  scrollbar-color: var(--control) transparent;
+}

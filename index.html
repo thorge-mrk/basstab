@@ -2,221 +2,202 @@
 <html lang="de">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="color-scheme" content="light dark" />
-    <title>BassTab – Noten zu Bass-Tabs</title>
-    <meta name="description" content="Fotografierte Bassnoten erkennen, automatisch spielbare 4-Saiter-Tabs erzeugen und als PDF speichern." />
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23c2410c'/%3E%3Cpath d='M7 10h18M7 15h18M7 20h18M7 25h18' stroke='%23fff' stroke-width='1.6'/%3E%3Ctext x='13' y='18.5' font-family='monospace' font-weight='700' font-size='9' fill='%23fff'%3E5%3C/text%3E%3C/svg%3E" />
-    <link rel="stylesheet" href="/src/style.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#06525c" />
+    <title>BassTab – Bassnoten fotografieren, Tabs bekommen</title>
+    <meta name="description" content="Fotografier deine Bassstimme: BassTab liest die Noten mit KI, fragt bei unsicheren Takten nach und setzt eine spielbare 4-Saiter-Tab darunter. Als PDF, direkt im Browser." />
+    <meta property="og:title" content="BassTab – Bassnoten zu Tabs" />
+    <meta property="og:description" content="Foto vom Notenblatt rein, PDF mit Noten und spielbarer Bass-Tab raus." />
+    <meta property="og:image" content="./img/three-deuces-1920.jpg" />
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+    <link rel="preload" as="image" href="./img/three-deuces-1920.jpg" imagesrcset="./img/three-deuces-900.jpg 900w, ./img/three-deuces-1920.jpg 1920w" imagesizes="100vw" />
   </head>
-  <body>
-    <header class="topbar">
-      <div class="brand">
-        <span class="logo" aria-hidden="true">
-          <svg viewBox="0 0 32 32" width="28" height="28"><rect width="32" height="32" rx="7" fill="currentColor" /><path d="M7 10h18M7 15h18M7 20h18M7 25h18" stroke="var(--surface)" stroke-width="1.6" /></svg>
-        </span>
-        <div>
-          <h1>BassTab</h1>
-          <p class="tagline">Noten fotografieren → spielbare Bass-Tabs → PDF</p>
+  <body class="landing">
+    <a class="skip" href="#ablauf">Zum Inhalt</a>
+
+    <header class="hero" id="top">
+      <figure class="hero-photo">
+        <img
+          src="./img/three-deuces-1920.jpg"
+          srcset="./img/three-deuces-900.jpg 900w, ./img/three-deuces-1920.jpg 1920w"
+          sizes="100vw"
+          width="1920"
+          height="1350"
+          alt="Abendpublikum vor dem Jazzclub Three Deuces in New York, über dem Eingang der Name des Bassisten Oscar Pettiford"
+          fetchpriority="high"
+        />
+        <figcaption>Three Deuces, New York, 1948 · Foto: William P. Gottlieb</figcaption>
+      </figure>
+
+      <div class="hero-card">
+        <h1 class="hero-title"><span>Bassnoten</span> <span>zu</span> <span>Tabs</span></h1>
+        <div class="hero-body">
+          <p class="hero-facts">
+            <span>Foto vom Notenblatt</span>
+            <span>Noten und 4-Saiter-Tab</span>
+            <span>PDF fürs Pult</span>
+          </p>
+          <p class="hero-sentence">Fotografier deine Bassstimme. BassTab liest sie, du klärst, was unsicher ist – und bekommst ein Blatt mit spielbarer Tab.</p>
         </div>
-      </div>
-      <div class="top-actions">
-        <button class="btn ghost" id="btn-help" type="button">Notation-Hilfe</button>
-        <button class="btn ghost" id="btn-settings" type="button" aria-label="Einstellungen">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>
-          <span class="hide-sm">Einstellungen</span>
-        </button>
+        <div class="hero-foot">
+          <span class="wordmark">BassTab</span>
+          <a class="btn on-ink" href="./tool/">BassTab öffnen</a>
+          <a class="hero-link" href="#ablauf">So geht's</a>
+        </div>
       </div>
     </header>
 
-    <main class="layout">
-      <div class="col-left">
-        <section class="panel" aria-labelledby="h-source">
-          <div class="panel-head">
-            <h2 id="h-source"><span class="step">1</span> Quelle</h2>
-            <div class="seg" role="tablist">
-              <button role="tab" class="seg-btn active" data-tab="photo" aria-selected="true">Foto</button>
-              <button role="tab" class="seg-btn" data-tab="xml" aria-selected="false">MusicXML</button>
-              <button role="tab" class="seg-btn" data-tab="demo" aria-selected="false">Beispiel</button>
-            </div>
+    <main>
+      <section class="story" id="ablauf" aria-labelledby="story-title">
+        <div class="story-text">
+          <h2 id="story-title">So geht's</h2>
+          <div class="beats">
+          <article class="beat" data-state="photo">
+            <p class="beat-line">Erst ein Foto.</p>
+            <p>Handy drüber, fertig. Bleistift-Notizen stören nicht – gelesen wird nur, was gedruckt ist.</p>
+          </article>
+          <article class="beat" data-state="read">
+            <p class="beat-line">Dann liest Gemini.</p>
+            <p>Takt für Takt, mit Tonart, Rhythmus, Dynamik, Wiederholungen und Volten. Du siehst live, wo es gerade liest.</p>
+          </article>
+          <article class="beat" data-state="check">
+            <p class="beat-line">Du klärst, was unsicher ist.</p>
+            <p>Statt still zu raten, fragt BassTab nach – mit dem Ausschnitt aus deinem Foto daneben.</p>
+          </article>
+          <article class="beat" data-state="tab">
+            <p class="beat-line">Zum Schluss die Tab.</p>
+            <p>Notenzeile oben, Tab darunter, als PDF auf A4. Zum Drucken, Teilen oder fürs Tablet am Pult.</p>
+          </article>
           </div>
-
-          <div class="tab-pane" data-pane="photo">
-            <label class="dropzone" id="dropzone">
-              <input type="file" id="file-photos" accept="image/*" multiple hidden />
-              <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M3 7h3l2-3h8l2 3h3v13H3z" /><circle cx="12" cy="13" r="4" /></svg>
-              <span><strong>Fotos wählen</strong> oder hierher ziehen</span>
-              <small>Mehrere Seiten in Reihenfolge. Möglichst gerade, hell, ganze Seite im Bild.</small>
-            </label>
-            <ol class="thumbs" id="thumbs"></ol>
-            <div class="model-row">
-              <label class="field inline">KI-Modell
-                <select id="model-select"></select>
-              </label>
-              <input type="text" id="model-custom" placeholder="Modell-ID, z. B. gemini-3.5-flash" aria-label="Eigene Modell-ID" hidden />
-            </div>
-            <div class="row">
-              <button class="btn primary" id="btn-recognize" type="button" disabled>Noten erkennen</button>
-              <button class="btn ghost" id="btn-cancel" type="button" hidden>Abbrechen</button>
-              <span class="status" id="recog-status" role="status"></span>
-            </div>
-            <p class="hint" id="key-hint" hidden>Für die Erkennung wird ein Google-AI-Studio-API-Key benötigt → <button class="link" type="button" data-open-settings>Einstellungen</button></p>
-          </div>
-
-          <div class="tab-pane" data-pane="xml" hidden>
-            <label class="dropzone small">
-              <input type="file" id="file-xml" accept=".musicxml,.xml,application/vnd.recordare.musicxml+xml,text/xml" hidden />
-              <span><strong>MusicXML-Datei wählen</strong> (.musicxml / .xml)</span>
-              <small>Ohne KI – z. B. aus Audiveris, MuseScore oder einer Scan-App exportiert.</small>
-            </label>
-          </div>
-
-          <div class="tab-pane" data-pane="demo" hidden>
-            <p class="hint">Lädt einen Ausschnitt aus „Todo tiene su final“ (Salsa-Tumbao in As-Dur) zum Ausprobieren.</p>
-            <button class="btn" id="btn-demo" type="button">Beispiel laden</button>
-          </div>
-        </section>
-
-        <section class="panel editor-panel" aria-labelledby="h-editor">
-          <div class="panel-head">
-            <h2 id="h-editor"><span class="step">2</span> Prüfen &amp; korrigieren</h2>
-            <span class="badge" id="diag-badge" hidden></span>
-          </div>
-          <p class="hint compact">Noten so schreiben, wie sie auf dem Blatt stehen. Klick auf einen Takt in der Vorschau springt zur Zeile.</p>
-          <textarea id="editor" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Notation"></textarea>
-          <ul class="diags" id="diags"></ul>
-        </section>
-      </div>
-
-      <section class="panel preview-panel" aria-labelledby="h-preview">
-        <div class="panel-head">
-          <h2 id="h-preview"><span class="step">3</span> Noten + Tab</h2>
-          <button class="btn primary" id="btn-pdf" type="button" disabled>
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3v12m0 0-5-5m5 5 5-5M4 21h16" /></svg>
-            PDF herunterladen
-          </button>
+          <div class="beat-dots" aria-hidden="true"><span class="is-on"></span><span></span><span></span><span></span></div>
         </div>
-        <div class="toolbar">
-          <label>Bass
-            <select id="opt-tuning"></select>
-          </label>
-          <label>Technik
-            <select id="opt-technique">
-              <option value="ofpf">1 Finger pro Bund</option>
-              <option value="simandl">Simandl (1-2-4)</option>
-            </select>
-          </label>
-          <label>Leersaiten
-            <select id="opt-open">
-              <option value="neutral">normal</option>
-              <option value="prefer">bevorzugen</option>
-              <option value="avoid">vermeiden</option>
-            </select>
-          </label>
-          <label>Lage
-            <select id="opt-position">
-              <option value="1">eher tief</option>
-              <option value="0.3">flexibel</option>
-              <option value="2.5">möglichst tief</option>
-            </select>
-          </label>
-          <label>Max. Bund
-            <select id="opt-maxfret">
-              <option>12</option><option>15</option><option selected>20</option><option>24</option>
-            </select>
-          </label>
-          <label>Takte/Zeile
-            <select id="opt-bars">
-              <option value="-1">auto</option><option>3</option><option>4</option><option>5</option><option>6</option>
-            </select>
-          </label>
-          <label>Anzeige
-            <select id="opt-view">
-              <option value="both">Noten + Tab</option>
-              <option value="tab">nur Tab</option>
-              <option value="score">nur Noten</option>
-            </select>
-          </label>
-          <label>Zoom
-            <select id="opt-zoom">
-              <option value="0.7">70 %</option><option value="0.85">85 %</option><option value="1" selected>100 %</option><option value="1.2">120 %</option>
-            </select>
-          </label>
-        </div>
-        <div class="paper" id="paper">
-          <div class="empty" id="empty">
-            <svg viewBox="0 0 120 60" width="120" height="60" aria-hidden="true"><g stroke="currentColor" stroke-width="1.2" opacity=".5"><path d="M4 10h112M4 22h112M4 34h112M4 46h112" /></g><g font-family="ui-monospace,monospace" font-size="11" fill="currentColor"><text x="20" y="38">3</text><text x="44" y="26">5</text><text x="68" y="26">3</text><text x="92" y="14">5</text></g></svg>
-            <p>Noch keine Noten. Foto hochladen, MusicXML öffnen oder das Beispiel laden.</p>
+        <div class="story-stage" aria-hidden="true">
+          <div class="sheet" data-state="photo">
+            <div class="sheet-paper">
+              <p class="sheet-part">Bass</p>
+              <div class="sheet-photo"></div>
+              <div class="sheet-boxes"></div>
+              <div class="sheet-tab"></div>
+            </div>
+            <div class="sheet-question">
+              <p>Takt 4: Es oder E?</p>
+              <span class="q-option is-on">Es</span>
+              <span class="q-option">E</span>
+            </div>
+            <p class="sheet-status"><span data-for="read">liest Takt <b class="num">4</b> von 4</span><span data-for="check">1 Frage</span><span data-for="tab">PDF fertig</span></p>
           </div>
-          <div id="alphatab"></div>
+        </div>
+      </section>
+
+      <section class="grip" id="griffbild" aria-labelledby="grip-title">
+        <div class="grip-text">
+          <h2 id="grip-title">Griffe wie vom Bassisten</h2>
+          <p>BassTab rechnet das ganze Stück durch, nicht Note für Note: wenige Lagenwechsel, keine unnötigen Saitensprünge, Haltebögen bleiben auf ihrer Saite. Probier's an diesem Riff aus.</p>
+          <fieldset class="seg">
+            <legend>Technik</legend>
+            <label><input type="radio" name="tech" value="ofpf" checked /><span>1 Finger pro Bund</span></label>
+            <label><input type="radio" name="tech" value="simandl" /><span>Simandl (1-2-4)</span></label>
+          </fieldset>
+          <fieldset class="seg">
+            <legend>Leersaiten</legend>
+            <label><input type="radio" name="open" value="prefer" /><span>gern</span></label>
+            <label><input type="radio" name="open" value="neutral" checked /><span>normal</span></label>
+            <label><input type="radio" name="open" value="avoid" /><span>vermeiden</span></label>
+          </fieldset>
+          <figure class="grip-video">
+            <video muted loop playsinline preload="none" poster="./img/bass-hands.jpg" width="960" height="540" aria-label="Hände auf dem Griffbrett eines 5-saitigen E-Basses, Slap und Flageolett">
+              <source src="./img/bass-hands.mp4" type="video/mp4" />
+            </video>
+            <figcaption>Slap und Flageolett auf dem 5-Saiter</figcaption>
+          </figure>
+        </div>
+        <figure class="grip-sheet">
+          <div class="grip-score" role="img" aria-label="Riff in Noten und Tab, Griffbild je nach Einstellung"></div>
+          <figcaption class="grip-readout" aria-live="polite">Wird gesetzt …</figcaption>
+        </figure>
+      </section>
+
+      <section class="showcase" id="zeichen" aria-labelledby="show-title">
+        <div class="showcase-stage">
+          <img class="showcase-photo" src="./img/three-deuces-band-1920.jpg" width="1920" height="1441" loading="lazy" alt="" />
+          <h2 id="show-title">Alles, was auf dem Blatt steht</h2>
+          <div class="showcase-window">
+          <div class="showcase-track">
+            <article class="card" data-example="repeat"><div class="card-score"></div><div class="card-panel"><h3>Wiederholung &amp; Volta</h3><p>Wiederholungszeichen, erste und zweite Klammer, mehrfache Durchläufe.</p></div></article>
+            <article class="card" data-example="jump"><div class="card-score"></div><div class="card-panel"><h3>Segno &amp; Coda</h3><p>Sprungzeichen und Probenziffern bleiben da, wo sie hingehören.</p></div></article>
+            <article class="card" data-example="dynamics"><div class="card-score"></div><div class="card-panel"><h3>Dynamik</h3><p>Von pp bis ff, Crescendo, Decrescendo und sfz.</p></div></article>
+            <article class="card" data-example="rhythm"><div class="card-score"></div><div class="card-panel"><h3>Triolen &amp; Bögen</h3><p>Auch punktiert, auch über den Taktstrich hinweg.</p></div></article>
+            <article class="card" data-example="artic"><div class="card-score"></div><div class="card-panel"><h3>Artikulation</h3><p>Staccato, Akzent, Tenuto, Marcato und Fermate.</p></div></article>
+            <article class="card" data-example="tech"><div class="card-score"></div><div class="card-panel"><h3>Bass-Technik</h3><p>Ghost und Dead Notes, Slides, Hammer-on, Slap und Pop.</p></div></article>
+          </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="models" id="modelle" aria-labelledby="models-title">
+        <div class="models-photo">
+          <img data-for="0" src="./img/pettiford.jpg" width="800" height="1000" loading="lazy" alt="Oscar Pettiford mit Kontrabass, New York 1946" />
+          <img data-for="1" src="./img/slam-stewart.jpg" width="800" height="1000" loading="lazy" alt="Slam Stewart spielt Kontrabass mit Bogen, New York 1946" />
+          <img data-for="2" src="./img/pettiford-raglin.jpg" width="800" height="1000" loading="lazy" alt="Oscar Pettiford und Junior Raglin, zwei Bassisten nebeneinander" />
+          <img data-for="3" src="./img/ray-brown.jpg" width="800" height="1000" loading="lazy" alt="Milt Jackson am Vibrafon, dahinter Ray Brown am Bass" />
+          <img data-for="4" src="./img/52nd-street-800.jpg" width="800" height="1052" loading="lazy" alt="Die 52nd Street in New York bei Nacht, 1948" />
+        </div>
+        <div class="models-list">
+          <h2 id="models-title">Dein Key, dein Modell</h2>
+          <p class="models-intro">BassTab hat keinen eigenen Server. Dein Google-AI-Studio-Key bleibt in deinem Browser, die Fotos gehen direkt an Google.</p>
+          <ul>
+            <li class="is-active"><button type="button" aria-expanded="true"><span>Gemini 3.5 Flash-Lite</span><span class="val">schnell, günstig</span></button><p>Die schnelle Wahl für saubere, gut ausgeleuchtete Fotos. Voreingestellt.</p></li>
+            <li><button type="button" aria-expanded="false"><span>Gemini 3.8 Flash</span><span class="val">genauer</span></button><p>Liest schiefe Handyfotos und dichte Seiten zuverlässiger.</p></li>
+            <li><button type="button" aria-expanded="false"><span>Gemini 4 Argon</span><span class="val">am stärksten</span></button><p>Für schwierige Vorlagen: Kopien von Kopien, kleine Noten, viele Zeichen. Kostet mehr pro Seite.</p></li>
+            <li><button type="button" aria-expanded="false"><span>Eigenes Modell</span><span class="val">jede ID</span></button><p>Kommt ein neues Gemini-Modell, trägst du seine ID einfach selbst ein.</p></li>
+            <li><button type="button" aria-expanded="false"><span>MusicXML</span><span class="val">ohne KI</span></button><p>Hast du die Noten schon digital, etwa aus MuseScore oder Audiveris? Dann braucht es gar keine KI und keinen Key.</p></li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="faq" id="fragen" aria-labelledby="faq-title">
+        <div class="faq-list">
+          <h2 id="faq-title">Fragen</h2>
+          <ul role="tablist" aria-orientation="vertical">
+            <li><button role="tab" type="button" aria-selected="true" aria-controls="faq-a" id="q0">Was kostet BassTab?</button><p class="faq-inline">BassTab selbst nichts. Du zahlst nur Google für das Lesen über deinen eigenen Key – je nach Modell meist ein paar Cent pro Seite. Viele Keys haben ein kostenloses Kontingent.</p></li>
+            <li><button role="tab" type="button" aria-selected="false" aria-controls="faq-a" id="q1">Wo landen meine Fotos?</button><p class="faq-inline">Nur bei Google, zum Lesen. Alles andere bleibt in deinem Browser: Key, Fotos, dein Stück. In den Einstellungen löschst du es mit einem Klick.</p></li>
+            <li><button role="tab" type="button" aria-selected="false" aria-controls="faq-a" id="q2">Wie genau liest die KI?</button><p class="faq-inline">Gut, aber nicht fehlerfrei. Darum meldet BassTab unsichere Takte, prüft jede Taktlänge und zeigt dir zu jedem Takt den Ausschnitt aus deinem Foto.</p></li>
+            <li><button role="tab" type="button" aria-selected="false" aria-controls="faq-a" id="q3">Und meine Bleistift-Notizen?</button><p class="faq-inline">Die werden ignoriert. Notennamen über den Noten dienen der KI höchstens als Hinweis – gelesen wird der Druck.</p></li>
+            <li><button role="tab" type="button" aria-selected="false" aria-controls="faq-a" id="q4">Welche Bässe gehen?</button><p class="faq-inline">4-Saiter in E-A-D-G, Drop D und 5-Saiter mit tiefer H-Saite – bis zum 12., 15., 20. oder 24. Bund.</p></li>
+            <li><button role="tab" type="button" aria-selected="false" aria-controls="faq-a" id="q5">Geht es auch ohne KI?</button><p class="faq-inline">Ja. Öffne MusicXML aus MuseScore, Audiveris oder einer Scan-App – oder schreib die Noten in der Textnotation selbst.</p></li>
+            <li><button role="tab" type="button" aria-selected="false" aria-controls="faq-a" id="q6">Klappt das am Handy?</button><p class="faq-inline">Dafür ist es gebaut: Foto direkt mit der Kamera, prüfen mit dem Daumen, PDF teilen.</p></li>
+          </ul>
+        </div>
+        <div class="faq-answer" id="faq-a" role="tabpanel" aria-labelledby="q0" aria-live="polite"></div>
+      </section>
+
+      <section class="cta" aria-labelledby="cta-title">
+        <img class="cta-photo" src="./img/52nd-street-1920.jpg" width="1920" height="1446" loading="lazy" alt="Leuchtreklamen der Jazzclubs auf der 52nd Street in New York, 1948" />
+        <div class="cta-text">
+          <h2 id="cta-title">Leg's aufs Pult.</h2>
+          <p>Ein Foto, ein paar Klicks – und eine Tab, die sich so spielt, wie du sie greifen würdest.</p>
+          <a class="btn paper" href="./tool/">BassTab öffnen</a>
         </div>
       </section>
     </main>
 
-    <dialog id="dlg-settings" class="dialog">
-      <form method="dialog">
-        <h2>Einstellungen</h2>
-        <label class="field">Google AI Studio API-Key
-          <input type="password" id="set-key" autocomplete="off" placeholder="AIza…" />
-        </label>
-        <p class="hint">Key erstellen: <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>. Der Key wird nur in diesem Browser gespeichert (localStorage) und direkt an die Gemini API geschickt. Deine Fotos gehen an Google zur Erkennung.</p>
-        <div class="row end">
-          <button class="btn ghost" value="cancel" formnovalidate>Abbrechen</button>
-          <button class="btn primary" value="save" id="set-save">Speichern</button>
-        </div>
-      </form>
-    </dialog>
+    <footer class="foot">
+      <p class="foot-name">BassTab</p>
+      <p>Läuft komplett im Browser. Notensatz mit <a href="https://alphatab.net">alphaTab</a>, Erkennung mit Gemini über deinen eigenen Key. Die Notenbeispiele auf dieser Seite sind eigens gesetzte Beispiele.</p>
+      <p class="credits">Fotos: William P. Gottlieb, Library of Congress, gemeinfrei, via Wikimedia Commons:
+        <a href="https://commons.wikimedia.org/wiki/File:Three_Deuces,_New_York,_N.Y.,_ca._July_1948_(William_P._Gottlieb_11361).jpg">Three Deuces, 1948</a>,
+        <a href="https://commons.wikimedia.org/wiki/File:Charlie_Parker,_Tommy_Potter,_Miles_Davis,_Duke_Jordan,_Max_Roach_(Gottlieb_06851).jpg">Charlie Parker, Tommy Potter, Miles Davis, Duke Jordan, Max Roach, 1947</a>,
+        <a href="https://commons.wikimedia.org/wiki/File:(Portrait_of_Oscar_Pettiford,_Aquarium,_New_York,_N.Y.,_ca._Nov._1946)_(LOC)_(4843755904).jpg">Oscar Pettiford, 1946</a>,
+        <a href="https://commons.wikimedia.org/wiki/File:Slam_Stewart,_New_York,_N.Y.,_ca._Sept._1946_(William_P._Gottlieb_08191).jpg">Slam Stewart, 1946</a>,
+        <a href="https://commons.wikimedia.org/wiki/File:(Portrait_of_Oscar_Pettiford_and_Junior_Raglin,_Aquarium,_New_York,_N.Y.,_ca._Nov._1946)_(LOC)_(4931776105).jpg">Oscar Pettiford und Junior Raglin, 1946</a>,
+        <a href="https://commons.wikimedia.org/wiki/File:Milt_Jackson_and_Ray_Brown,_New_York,_between_1946_and_1948_(William_P._Gottlieb_04461).jpg">Milt Jackson und Ray Brown</a>,
+        <a href="https://commons.wikimedia.org/wiki/File:52nd_Street,_New_York,_by_Gottlieb,_1948.jpg">52nd Street, 1948</a>
+        (<a href="https://creativecommons.org/publicdomain/mark/1.0/">Public Domain Mark</a>).
+        Video: <a href="https://commons.wikimedia.org/wiki/File:Slap_and_harmonics_on_a_5_string_bass_guitar.ogv">„Slap and harmonics on a 5 string bass guitar“</a>, via Wikimedia Commons, <a href="https://creativecommons.org/licenses/by/4.0">CC BY 4.0</a>, in Graustufen und ohne Ton.</p>
+    </footer>
 
-    <dialog id="dlg-help" class="dialog wide">
-      <form method="dialog">
-        <h2>BassTab-Notation</h2>
-        <div class="help-grid">
-          <div>
-            <h3>Kopf</h3>
-            <pre>title: Todo tiene su final
-composer: Hector Lavoe
-key: Ab        <i>(oder 4b, F, Em, 2#)</i>
-time: 4/4
-tempo: 94</pre>
-            <h3>Noten</h3>
-            <pre>F3/4.    <i>punktierte Viertel F3</i>
-C3       <i>gleiche Länge wie davor</i>
-G#3/8    <i>Vorzeichen nur wenn gedruckt</i>
-Bn2      <i>Auflösungszeichen</i>
-F3/4~ F3 <i>Haltebogen</i>
-r/8  R   <i>Pause / Ganztaktpause</i>
-(E2 B2)/2   <i>Akkord</i>
-{3 C3/8 D3 E3}  <i>Triole</i>
-C3@4     <i>auf Saite 4 (E) erzwingen</i></pre>
-          </div>
-          <div>
-            <h3>Takte &amp; Form</h3>
-            <pre>|    <i>Taktstrich</i>
-|: … :|   <i>Wiederholung</i>
-:|x3      <i>3 Durchläufe</i>
-||   |]   <i>Doppelstrich / Schluss</i>
-[volta 1]   [volta 2]
-[section 1 Strophe 1+2]
-[segno] [coda] [D.S. al Coda]
-[rest 7]  <i>7 Takte Pause</i>
-[key Eb] [time 3/4] [tempo 120]
-[text Fill]
-% Kommentar</pre>
-            <h3>Oktaven im Bassschlüssel</h3>
-            <p>Linien von unten: G2 B2 D3 F3 A3<br />Zwischenräume: A2 C3 E3 G3<br />Leere E-Saite = E2, leere G-Saite = G3</p>
-          </div>
-        </div>
-        <div class="row end"><button class="btn primary" value="ok">Schließen</button></div>
-      </form>
-    </dialog>
+    <a class="stub" href="./tool/" hidden>BassTab öffnen</a>
 
-    <dialog id="dlg-photo" class="dialog photo">
-      <form method="dialog"><button class="btn ghost close" value="close" aria-label="Schließen">✕</button></form>
-      <img id="photo-full" alt="Notenfoto" />
-    </dialog>
-
-    <div class="toast" id="toast" role="alert" hidden></div>
-
-    <script type="module" src="/src/main.ts"></script>
+    <script type="module" src="./src/landing/landing.ts"></script>
   </body>
 </html>

@@ -4,3 +4,8 @@ dist
 .DS_Store
 public/font
 public/soundfont
+.taste-skill
+.claude/settings.local.json
+.claude/skills/impeccable/scripts/bin
+assets/*.jpg
+assets/*.webm

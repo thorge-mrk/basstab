@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#f7f9f8" />
+    <title>BassTab – Werkzeug</title>
+    <meta name="description" content="Bassnoten fotografieren, von der KI lesen lassen, unsichere Takte bestätigen und ein PDF mit Noten und 4-Saiter-Tab herunterladen." />
+    <link rel="icon" href="../favicon.svg" type="image/svg+xml" />
+  </head>
+  <body class="tool">
+    <a class="skip" href="#step">Zum Inhalt</a>
+    <header class="appbar">
+      <a class="wordmark" href="../" aria-label="BassTab Startseite">BassTab</a>
+      <nav id="progress" class="progress" aria-label="Fortschritt"></nav>
+      <div class="appbar-actions">
+        <button class="btn quiet icon-only" id="btn-help" type="button" aria-label="Notation-Hilfe">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.6M12 17h.01" /></svg>
+        </button>
+        <button class="btn quiet icon-only" id="btn-settings" type="button" aria-label="Einstellungen">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1" /></svg>
+        </button>
+      </div>
+    </header>
+
+    <main id="step" class="step" tabindex="-1"></main>
+
+    <dialog id="dlg-settings" class="dialog" aria-labelledby="settings-title">
+      <form method="dialog">
+        <h2 id="settings-title">Einstellungen</h2>
+        <div class="dlg-body"></div>
+        <div class="step-actions">
+          <button class="btn primary" value="save">Speichern</button>
+          <button class="btn quiet" value="cancel" formnovalidate>Abbrechen</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="dlg-help" class="dialog wide" aria-labelledby="help-title">
+      <form method="dialog">
+        <div class="sheet-head">
+          <h2 id="help-title">So schreibst du Noten</h2>
+          <button class="btn quiet icon-only" value="close" aria-label="Schließen">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg>
+          </button>
+        </div>
+        <p class="help">Noten schreibst du so, wie sie auf dem Blatt stehen. Vorzeichen der Tonart setzt BassTab selbst.</p>
+        <div class="help-grid">
+          <dl>
+            <dt><code>F3/4.</code></dt><dd>punktierte Viertel F</dd>
+            <dt><code>C3</code></dt><dd>gleiche Länge wie davor</dd>
+            <dt><code>G#3/8</code> <code>Bn2</code></dt><dd>Kreuz, Auflösungszeichen – nur wenn gedruckt</dd>
+            <dt><code>F3/4~ F3/8</code></dt><dd>Haltebogen</dd>
+            <dt><code>r/8</code> <code>R</code></dt><dd>Pause, Ganztaktpause</dd>
+            <dt><code>{3 C3/8 D3 E3}</code></dt><dd>Triole</dd>
+            <dt><code>(E2 B2)/2</code></dt><dd>Akkord</dd>
+            <dt><code>C3@4</code></dt><dd>auf Saite 4 (E) greifen</dd>
+          </dl>
+          <dl>
+            <dt><code>!mf</code> <code>!p</code> <code>!sfz</code></dt><dd>Dynamik vor der Note</dd>
+            <dt><code>\&lt;</code> <code>\&gt;</code> <code>\!</code></dt><dd>Crescendo, Decrescendo, Ende</dd>
+            <dt><code>-.</code> <code>-&gt;</code> <code>--</code> <code>-^</code></dt><dd>Staccato, Akzent, Tenuto, Marcato</dd>
+            <dt><code>\fermata</code></dt><dd>Fermate</dd>
+            <dt><code>-x</code> <code>-g</code> <code>-/</code> <code>-h</code></dt><dd>Dead Note, Ghost Note, Slide, Hammer-on</dd>
+            <dt><code>"tutti" F3</code></dt><dd>Text über der Note</dd>
+            <dt><code>|: … :|</code> <code>[volta 1]</code></dt><dd>Wiederholung, Volta</dd>
+            <dt><code>[section A Intro]</code> <code>[segno]</code> <code>[rest 7]</code></dt><dd>Probenziffer, Segno, 7 Takte Pause</dd>
+          </dl>
+        </div>
+        <p class="help">Oktaven im Bassschlüssel: Linien von unten G2 B2 D3 F3 A3, Zwischenräume A2 C3 E3 G3. Leere E-Saite = E2.</p>
+      </form>
+    </dialog>
+
+    <script type="module" src="../src/tool/app.ts"></script>
+  </body>
+</html>

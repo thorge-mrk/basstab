@@ -1,7 +1,7 @@
 // MusicXML-Import (z. B. aus Audiveris, MuseScore oder Scan-Apps) – ohne KI.
 
-import type { Score, Measure, MusicEvent, Duration, Step, NoteHead, Jump } from './score';
-import { DURATIONS, midiOf } from './score';
+import type { Score, Measure, MusicEvent, Duration, Step, NoteHead, Jump, Dynamic, Articulation } from './score';
+import { DURATIONS, DYNAMICS, midiOf } from './score';
 
 const TYPE_TO_DUR: Record<string, Duration> = {
   whole: 1, half: 2, quarter: 4, eighth: 8, '16th': 16, '32nd': 32,
@@ -38,13 +38,15 @@ export function parseMusicXml(xml: string): Score {
   let divisions = 1;
   let first = true;
   let pendingMultiRest = 0;
+  let pendingDynamic: Dynamic | undefined;
+  let hairpin: 'cresc' | 'dim' | undefined;
 
   for (const mEl of part.querySelectorAll(':scope > measure')) {
     if (pendingMultiRest > 0) {
       pendingMultiRest--;
       continue;
     }
-    const m: Measure = { events: [], repeatStart: false, repeatEnd: 0, jumps: [], texts: [], line: 0 };
+    const m: Measure = { events: [], repeatStart: false, repeatEnd: 0, jumps: [], texts: [], line: 0, src: { start: -1, end: -1 } };
     let lastNote: (MusicEvent & { kind: 'note' }) | null = null;
 
     for (const el of mEl.children) {
@@ -73,6 +75,12 @@ export function parseMusicXml(xml: string): Score {
           break;
         }
         case 'direction': {
+          const dyn = el.querySelector('dynamics > *')?.tagName as Dynamic | undefined;
+          if (dyn && (DYNAMICS as readonly string[]).includes(dyn)) pendingDynamic = dyn;
+          const wedge = el.querySelector('wedge')?.getAttribute('type');
+          if (wedge === 'crescendo') hairpin = 'cresc';
+          else if (wedge === 'diminuendo') hairpin = 'dim';
+          else if (wedge === 'stop') hairpin = undefined;
           if (el.querySelector('segno')) m.jumps.push('segno');
           if (el.querySelector('coda')) m.jumps.push('coda');
           const reh = el.querySelector('rehearsal')?.textContent?.trim();
@@ -122,9 +130,11 @@ export function parseMusicXml(xml: string): Score {
           const tuplet = tm ? Number(tm.textContent) : undefined;
           const tieStart = [...el.querySelectorAll(':scope > tie')].some((t) => t.getAttribute('type') === 'start');
 
+          const artics = noteArtics(el);
+          const expr = { ...(hairpin ? { hairpin } : {}), ...(artics.length ? { artics } : {}) };
           if (el.querySelector('rest')) {
             const full = el.querySelector('rest')?.getAttribute('measure') === 'yes' || !el.querySelector('type');
-            m.events.push({ kind: 'rest', duration, dots, tuplet, fullMeasure: full || undefined });
+            m.events.push({ kind: 'rest', duration, dots, tuplet, fullMeasure: full || undefined, ...expr });
             lastNote = null;
             break;
           }
@@ -141,7 +151,9 @@ export function parseMusicXml(xml: string): Score {
             lastNote.notes.push(head);
             lastNote.tieToNext ||= tieStart;
           } else {
-            lastNote = { kind: 'note', notes: [head], duration, dots, tieToNext: tieStart, tuplet };
+            lastNote = { kind: 'note', notes: [head], duration, dots, tieToNext: tieStart, tuplet, ...expr };
+            if (pendingDynamic) lastNote.dynamic = pendingDynamic;
+            pendingDynamic = undefined;
             m.events.push(lastNote);
           }
           break;
@@ -153,6 +165,23 @@ export function parseMusicXml(xml: string): Score {
     first = false;
   }
   return score;
+}
+
+const XML_ARTIC: Record<string, Articulation> = {
+  staccato: 'staccato', accent: 'accent', tenuto: 'tenuto', 'strong-accent': 'marcato', fermata: 'fermata',
+  'hammer-on': 'hammer', slide: 'slide', glissando: 'slide',
+};
+
+function noteArtics(el: Element): Articulation[] {
+  const out = new Set<Articulation>();
+  for (const n of el.querySelectorAll('notations *')) {
+    const a = XML_ARTIC[n.tagName];
+    if (a && n.getAttribute('type') !== 'stop') out.add(a);
+  }
+  const head = el.querySelector('notehead')?.textContent;
+  if (head === 'x') out.add('dead');
+  if (el.querySelector('notehead[parentheses="yes"]')) out.add('ghost');
+  return [...out];
 }
 
 function noteDuration(el: Element, divisions: number): { duration: Duration; dots: number } {

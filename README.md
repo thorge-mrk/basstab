@@ -2,14 +2,21 @@
 
 Statische Web-App: Fotos von Bassnoten hochladen → Noten werden erkannt → automatisch **spielbares** Griffbild für 4-Saiter-Bass (oder Drop D / 5-Saiter) → Darstellung als Notenzeile + Tabulatur → **PDF-Download**.
 
+- `/` – Landing Page (erklärt das Werkzeug, Live-Griffbild zum Ausprobieren)
+- `/tool/` – das Werkzeug, Schritt für Schritt: Einrichten (API-Key, Modell) → Fotos → Lesen (live animiert) → unsichere Stellen bestätigen → Gesamtbild → Angaben → PDF
+
 ## Ablauf
 
 1. **Quelle**
    - **Foto**: Erkennung mit Gemini – Modell wählbar (Standard `gemini-3.5-flash-lite`, außerdem `gemini-3.8-flash`, `gemini-4-argon` oder eigene Modell-ID) über deinen eigenen Google-AI-Studio-API-Key.
    - **MusicXML**: ohne KI, z. B. aus Audiveris, MuseScore oder einer Scan-App.
    - **Beispiel**: Demo zum Ausprobieren.
-2. **Prüfen & korrigieren** in einer kompakten Textnotation (Hilfe in der App). Falsche Taktlängen werden markiert, Gemini meldet unsichere Takte. Klick auf einen Takt in der Vorschau springt zur Zeile.
-3. **Noten + Tab** mit alphaTab rendern, Griffbild-Optionen anpassen, PDF herunterladen.
+2. **Lesen**: Gemini liefert pro Takt Inhalt und Position im Foto; jeder fertige Takt leuchtet live auf dem Foto auf.
+3. **Prüfen**: unsichere Takte einzeln – Foto-Ausschnitt, Frage der KI, Alternativen als Mini-Noten, eigene Eingabe.
+4. **Gesamtbild**: Noten + Tab, Griffbild-Optionen, Takt antippen → mit Foto vergleichen und korrigieren; Taktlängen werden geprüft.
+5. **Angaben & PDF**: Titel/Interpret bestätigen, A4-PDF im Browser erzeugen, herunterladen oder teilen.
+
+Erkannt und gesetzt werden u. a. Tonart, Taktart, Tempo, Haltebögen, Triolen, Wiederholungen, Volten, Segno/Coda/D.S., Probenziffern, Mehrtaktpausen, Dynamik und Gabeln, Staccato/Akzent/Tenuto/Marcato/Fermate, Ghost/Dead Notes, Slides, Hammer-on, Slap/Pop und Spielanweisungen wie „tutti“.
 
 ## Griffbild-Algorithmus (`src/fingering.ts`)
 
@@ -38,6 +45,10 @@ npm run build    # nach dist/
 
 Kein eigener Server. API-Key und Notation liegen nur im `localStorage` des Browsers. Fotos gehen ausschließlich direkt an die Gemini API.
 Hinweis: Ein im Browser genutzter API-Key ist für jeden mit Zugriff auf diesen Browser lesbar – Key im AI Studio ggf. auf die Gemini API beschränken.
+
+## Design
+
+Siehe `PRODUCT.md` (Produktwahrheit) und `DESIGN.md` (Design-System). Gebaut mit den Skills *impeccable*, *design-taste-frontend* (taste-skill) und *emil-design-eng*, die unter `.claude/skills/` liegen. Fotos: William P. Gottlieb / Library of Congress (gemeinfrei), Video: Wikimedia Commons (CC BY 4.0) – Nachweise im Footer der Landing Page und in `assets/credits.json`.
 
 ## Stack
 
