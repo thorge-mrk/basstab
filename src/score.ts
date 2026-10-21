@@ -61,6 +61,8 @@ export interface RestEvent extends Expression {
   tuplet?: number;
   /** Ganztaktpause unabhängig von der Taktart. */
   fullMeasure?: boolean;
+  /** Von BassTab ergänzt (unvollständiger Takt), steht nicht im Quelltext. */
+  auto?: boolean;
 }
 
 export type MusicEvent = NoteEvent | RestEvent;
@@ -549,6 +551,13 @@ function applyDirective(
   }
 }
 
+/**
+ * Prüft die Taktlänge und gleicht übliche Notensatz-Konventionen still aus, statt sie zu melden:
+ * - nur Pausen im Takt → Ganztaktpause (so sieht es auch auf dem Blatt aus)
+ * - zu kurzer erster Takt → Auftakt, Pausen davor
+ * - sonst zu kurzer Takt → fehlende Pausen am Ende ergänzt (Pausen werden in Stimmen oft weggelassen)
+ * Nur ein zu langer Takt ist ein echter Lesefehler und wird gemeldet.
+ */
 function validateMeasure(m: Measure, time: [number, number], index: number, diagnostics: Diagnostic[]) {
   if (m.multiRest) {
     if (m.events.length) diagnostics.push({ line: m.line, severity: 'warning', measure: index + 1, message: 'Takt mit [rest n] sollte keine Noten enthalten' });
@@ -561,7 +570,7 @@ function validateMeasure(m: Measure, time: [number, number], index: number, diag
   }
   const expected = measureTicks(time);
   const actual = m.events.reduce((s, e) => s + durationTicks(e), 0);
-  if (Math.abs(actual - expected) > 1) {
+  if (actual - expected > 1) {
     const fmt = (t: number) => `${+(t / (1920 / time[1])).toFixed(2)}/${time[1]}`;
     diagnostics.push({
       line: m.line,
@@ -569,7 +578,31 @@ function validateMeasure(m: Measure, time: [number, number], index: number, diag
       measure: index + 1,
       message: `Takt ${index + 1}: Länge ${fmt(actual)} statt ${time[0]}/${time[1]}`,
     });
+    return;
   }
+  const onlyRests = m.events.every((e) => e.kind === 'rest' && !e.artics?.length && !e.text);
+  if (onlyRests) {
+    const { dynamic, hairpin } = m.events[0];
+    m.events = [{ kind: 'rest', duration: 1, dots: 0, fullMeasure: true, ...(dynamic ? { dynamic } : {}), ...(hairpin ? { hairpin } : {}) }];
+    return;
+  }
+  if (expected - actual > 1) {
+    const fill = restsFor(expected - actual);
+    m.events = index === 0 ? [...fill, ...m.events] : [...m.events, ...fill];
+  }
+}
+
+/** Zerlegt eine Lücke in möglichst wenige Pausen (ganze, halbe, … 32tel). */
+function restsFor(ticks: number): RestEvent[] {
+  const out: RestEvent[] = [];
+  for (const d of DURATIONS) {
+    const t = 1920 / d;
+    while (ticks + 1 >= t) {
+      out.push({ kind: 'rest', duration: d, dots: 0, auto: true });
+      ticks -= t;
+    }
+  }
+  return out;
 }
 
 // ---------------------------------------------------------------------------
@@ -613,6 +646,7 @@ export function serializeNotation(score: Score): string {
 
     let tuplet: number | undefined;
     for (const e of m.events) {
+      if (e.kind === 'rest' && e.auto) continue; // ergänzte Pausen entstehen beim Einlesen neu
       if (e.tuplet !== tuplet) {
         if (tuplet) parts.push('}');
         if (e.tuplet) parts.push(`{${e.tuplet}`);

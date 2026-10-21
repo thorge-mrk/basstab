@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { MeasureStream, toNotation } from '../src/gemini';
+import { MeasureStream, filterUncertain, toNotation } from '../src/gemini';
 import { parseNotation } from '../src/score';
 
 const RESULT = {
@@ -40,5 +40,37 @@ describe('toNotation', () => {
     expect(score.measures[1].repeatStart).toBe(true);
     expect(score.measures[2].jumps).toEqual(['segno']);
     expect(score.measures[3].multiRest).toBe(4);
+  });
+});
+
+describe('Rückfragen filtern', () => {
+  const measures = [
+    { number: 1, page: 1, content: 'r/2 r/4', end: '|' },
+    { number: 2, page: 1, content: 'G2/4 A2 B2', end: '|' },
+    { number: 3, page: 1, content: 'F#3/4 G3/2.', end: '|' },
+  ];
+  const base = { key: 'G', time: '3/4', measures };
+
+  it('verwirft Fragen, die nur Pausen betreffen', () => {
+    const uncertain = filterUncertain({
+      ...base,
+      uncertain: [{ measure: 1, question: 'Soll der ganze Takt pausieren?', options: ['R', 'r/2.'] }],
+    });
+    expect(uncertain).toEqual([]);
+  });
+
+  it('verwirft Alternativen, die genauso klingen', () => {
+    expect(filterUncertain({ ...base, uncertain: [{ measure: 2, question: 'Gleich?', options: ['G2/4 A2/4 B2/4'] }] })).toEqual([]);
+  });
+
+  it('behält echte Lesefragen und pro Takt nur eine', () => {
+    const uncertain = filterUncertain({
+      ...base,
+      uncertain: [
+        { measure: 3, question: 'Fis oder F?', options: ['Fn3/4 G3/2.', 'F#3/4 G3/2.'] },
+        { measure: 3, question: 'Nochmal?', options: ['A3/4 G3/2.'] },
+      ],
+    });
+    expect(uncertain).toEqual([{ measure: 3, question: 'Fis oder F?', options: ['Fn3/4 G3/2.'] }]);
   });
 });

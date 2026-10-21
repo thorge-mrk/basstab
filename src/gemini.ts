@@ -1,6 +1,7 @@
 // Notenerkennung aus Fotos mit Gemini (Google AI Studio API-Key, läuft im Browser).
 
 import { GoogleGenAI, MediaResolution, ThinkingLevel, ApiError, type Part } from '@google/genai';
+import { durationTicks, parseNotation } from './score';
 
 export const MODELS = [
   { id: 'gemini-3.5-flash-lite', label: 'Gemini 3.5 Flash-Lite', hint: 'schnell und günstig – für saubere Fotos' },
@@ -53,12 +54,24 @@ Examples: printed note on the top space with a sharp → "G#3". Same note later 
 
 ## Rhythm
 Duration follows a slash: /1 whole, /2 half, /4 quarter, /8 eighth, /16 sixteenth, /32. Dots after the duration: "/4." dotted quarter, "/8.." double-dotted.
-The duration is remembered: if a note has the same duration (incl. dots) as the previous event you may omit it. When in doubt write it explicitly.
+The duration is remembered: if a note has the same duration (incl. dots) as the previous event you may omit it – but ALWAYS write the duration on the first event of every measure.
 Tie (curved line connecting two noteheads of the SAME pitch): write "~" directly after the first note: "F3/4~ F3/8". Ignore slurs between different pitches.
 Rests: "r/4", "r/8." etc. A whole-measure rest (centered whole rest in a measure) is "R".
 Chords (rare): "(E2 B2)/4".
 Tuplets: wrap in braces with the number: "{3 C3/8 D3 E3}".
 EVERY measure must add up exactly to the time signature (except a pickup measure). Re-check each measure: e.g. in 4/4 "/4. /4. /4" = 1.5+1.5+1 = 4 beats.
+
+## Engraving conventions – apply them silently, never ask about them
+- A single rest centered in an otherwise empty measure is a whole-measure rest in ANY time signature (also 3/4, 6/8, 2/2) → "R". This is by far the most common case on bass parts. A whole rest hangs below the 4th line, a half rest sits on the 3rd line – if a lone rest fills the measure visually, it is "R".
+- A measure that looks empty is a whole-measure rest → "R".
+- If beats look empty after your reading, look again: you probably missed a rest or misread a duration (dot, flag, beam). If it still does not add up, complete the measure with rests yourself. Do not ask.
+- The first measure may be a pickup (anacrusis) and is shorter – write only what is printed.
+- Repeat-measure sign (slash with two dots, "%"): write the content of the previous measure again; a two-bar repeat sign repeats the previous two measures.
+- Rhythm/slash notation without pitches (e.g. comping or "walk" sections): write rests of the same total length and add the printed instruction as [text ...].
+- Cue notes (smaller notes, often labelled with another instrument) and grace notes are not played: write rests for cue notes, omit grace notes.
+- Chord symbols above the staff (C7, Fm9 …) are not notes – ignore them.
+- Courtesy accidentals in parentheses are written like normal accidentals.
+- Octave clefs and "8vb"/"8va" lines: write the pitch as printed on the staff (the software handles the bass octave).
 
 ## Everything else printed on the part – do not drop any of it
 Dynamics: write before the note they apply to: "!pp !p !mp !mf !f !ff !fff", sforzando "!sfz". Example: "!mf F3/4".
@@ -82,7 +95,9 @@ Barlines are given by the "end" field of each measure: "|" normal, "||" double b
 Return JSON matching the schema, measures in reading order.
 - title/composer/arranger exactly as printed ("" if not printed). key: e.g. "Ab", "F", "Eb", "G", "C" – from the number of flats/sharps (4 flats = Ab, 2 sharps = D, none = C). time: e.g. "4/4". tempo: BPM from the metronome mark or 0.
 - measures: one entry per printed measure, multi-measure rests as a single entry. "number" is the measure number (a multi-measure rest of 7 bars occupies 7 numbers; the next measure continues after them). "page" is the image it is on. "box" is the bounding box of that measure on its page as [ymin, xmin, ymax, xmax] normalized to 0–1000, from barline to barline horizontally and covering the staff plus notes above and below vertically.
-- uncertain: every measure where the photo is unclear or you are not sure (blurry, cut off, ambiguous rhythm or accidental, hard-to-read marks). For each: a short question in German for the bassist (e.g. "Ist die zweite Note ein Gis oder ein G?") and 1–3 alternative readings of the WHOLE measure content in BassTab notation, different from your main reading. Be honest: it is much better to ask than to guess wrong.`;
+- uncertain: ONLY measures where something that changes what the bassist PLAYS is physically hard to read – blurry, cut off, covered by pencil or a fold – and two readings are both plausible. Typical: an accidental you cannot see clearly, a notehead between line and space, a dot or flag you cannot make out. At most one entry per measure.
+  Never ask about: rests, whole-measure rests, measure length, pickups, the conventions above, pencil annotations, dynamics, articulations or text, or anything you can decide from the printed music.
+  For each entry: a short, concrete question in German for the bassist (e.g. "Ist die zweite Note ein Gis oder ein G?") and 1–2 alternative readings of the WHOLE measure content in BassTab notation, each with every duration written explicitly, each adding up to the time signature and each differing from your main reading in pitch or rhythm of the notes. On a clean print this list is usually empty.`;
 
 const RESPONSE_SCHEMA = {
   type: 'object',
@@ -145,7 +160,7 @@ export interface PreparedImage {
 }
 
 /** Skaliert große Fotos herunter (Gemini braucht keine 12 MP) und korrigiert die EXIF-Drehung. */
-export async function prepareImage(file: Blob, maxSide = 3072): Promise<PreparedImage> {
+export async function prepareImage(file: Blob, maxSide = 2560): Promise<PreparedImage> {
   const bmp = await createImageBitmap(file, { imageOrientation: 'from-image' }).catch(() => null);
   if (!bmp) {
     // z. B. HEIC in Chrome: Original schicken, Gemini kann HEIC lesen (ohne Vorschau-Ausschnitte)
@@ -161,7 +176,7 @@ export async function prepareImage(file: Blob, maxSide = 3072): Promise<Prepared
   canvas.height = Math.round(bmp.height * scale);
   canvas.getContext('2d')!.drawImage(bmp, 0, 0, canvas.width, canvas.height);
   bmp.close();
-  const url = canvas.toDataURL('image/jpeg', 0.9);
+  const url = canvas.toDataURL('image/jpeg', 0.88);
   return { mimeType: 'image/jpeg', data: url.slice(url.indexOf(',') + 1), url, width: canvas.width, height: canvas.height };
 }
 
@@ -226,7 +241,7 @@ export async function recognizeSheet(images: PreparedImage[], opts: RecognizeOpt
   return {
     notation: toNotation(raw),
     measures: raw.measures,
-    uncertain: (raw.uncertain ?? []).filter((u) => u.question),
+    uncertain: filterUncertain(raw),
     meta: { title: raw.title ?? '', composer: raw.composer ?? '', arranger: raw.arranger ?? '' },
   };
 }
@@ -327,6 +342,51 @@ export function toNotation(r: RawResult): string {
     }
   });
   return `${head.join('\n')}\n\n${lines.join('\n')}\n`;
+}
+
+/**
+ * Behält nur Rückfragen, die etwas am Gespielten ändern: Alternativen, die dieselben Töne
+ * zur selben Zeit ergeben (etwa andere Pausen oder fehlende Pausen), fallen weg – das gleicht
+ * BassTab beim Einlesen ohnehin aus. Pro Takt höchstens eine Frage.
+ */
+export function filterUncertain(raw: Pick<RawResult, 'key' | 'time' | 'measures' | 'uncertain'>): Uncertainty[] {
+  // Taktart je Takt (Wechsel per [time …] im Stück)
+  const times: string[] = [];
+  let time = raw.time || '4/4';
+  for (const m of raw.measures) {
+    const t = /\[time\s+(\d+\/\d+)\]/.exec(m.content);
+    if (t) time = t[1];
+    times.push(time);
+  }
+  const played = (content: string, t: string): string | null => {
+    const { score, diagnostics } = parseNotation(`key: ${raw.key || 'C'}\ntime: ${t}\n\n${content.replace(/\|/g, ' ')} |`);
+    if (diagnostics.some((d) => d.severity === 'error') || !score.measures.length) return null;
+    let onset = 0;
+    const out: string[] = [];
+    for (const m of score.measures) {
+      for (const e of m.events) {
+        const d = durationTicks(e);
+        if (e.kind === 'note') out.push(`${onset}:${e.notes.map((n) => n.pitch.midi).sort().join('+')}:${d}${e.tieToNext ? '~' : ''}`);
+        onset += d;
+      }
+    }
+    return out.join(' ');
+  };
+  const asked = new Set<number>();
+  const out: Uncertainty[] = [];
+  for (const u of raw.uncertain ?? []) {
+    const idx = raw.measures.findIndex((m) => m.number === u.measure);
+    if (!u.question?.trim() || idx < 0 || asked.has(u.measure)) continue;
+    const main = played(raw.measures[idx].content, times[idx]);
+    const options = [...new Set((u.options ?? []).map((o) => o.trim()).filter(Boolean))].filter((o) => {
+      const p = played(o, times[idx]);
+      return p !== null && p !== main;
+    });
+    if (!options.length) continue;
+    asked.add(u.measure);
+    out.push({ ...u, options });
+  }
+  return out;
 }
 
 /** Prüft Key und Modell mit einem kostenlosen Metadaten-Aufruf. */

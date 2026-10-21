@@ -27,10 +27,31 @@ describe('Notation', () => {
     expect(b.kind === 'note' && b.notes[0].pitch.midi).toBe(53);
   });
 
-  it('meldet falsche Taktlängen', () => {
-    const { diagnostics } = parseNotation('time: 4/4\nC3/4 C3 C3 | C3/1 |');
+  it('meldet zu lange Takte', () => {
+    const { diagnostics } = parseNotation('time: 4/4\nC3/1 | C3/2 C3/2 C3/4 |');
     expect(diagnostics.length).toBe(1);
-    expect(diagnostics[0].measure).toBe(1);
+    expect(diagnostics[0].measure).toBe(2);
+  });
+
+  it('füllt zu kurze Takte still mit Pausen auf', () => {
+    const { score, diagnostics } = parseNotation('time: 4/4\nC3/4 | D3/4 E3 F3 | G3/8 |');
+    expect(diagnostics).toEqual([]);
+    const [pickup, mid, last] = score.measures;
+    // Auftakt: Pausen davor
+    expect(pickup.events.map((e) => e.kind)).toEqual(['rest', 'rest', 'note']);
+    expect(mid.events.at(-1)).toMatchObject({ kind: 'rest', duration: 4, auto: true });
+    expect(last.events.slice(1).map((e) => e.duration)).toEqual([2, 4, 8]);
+  });
+
+  it('macht aus einem Takt nur mit Pausen eine Ganztaktpause', () => {
+    const { score, diagnostics } = parseNotation('time: 3/4\nr/2 | C3/2. |');
+    expect(diagnostics).toEqual([]);
+    expect(score.measures[0].events).toEqual([{ kind: 'rest', duration: 1, dots: 0, fullMeasure: true }]);
+  });
+
+  it('ergänzte Pausen landen nicht im Quelltext', () => {
+    const src = 'time: 4/4\n\nD3/4 E3 F3 | G3/1 |\n';
+    expect(serializeNotation(parseNotation(src).score)).not.toMatch(/r/);
   });
 
   it('Serialisierung ist verlustfrei', () => {
