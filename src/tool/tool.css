@@ -363,6 +363,10 @@ select {
   color: var(--text-2);
 }
 
+.model-custom {
+  margin-top: -2px;
+}
+
 /* ---------- Willkommen ---------- */
 
 .welcome {
@@ -1135,20 +1139,62 @@ select {
   font-size: 0.9375rem;
 }
 
-.danger-zone {
-  margin-top: 28px;
-  padding-top: 16px;
+.set-section {
+  padding: 20px 0;
   border-top: 1px solid var(--line);
 }
 
-.danger-zone p {
-  margin: 0 0 8px;
-  font-size: 0.875rem;
-  color: var(--text-2);
+.set-section:first-of-type {
+  border-top: 0;
+  padding-top: 4px;
 }
 
-.model-custom {
-  margin-top: 4px;
+.set-section h3 {
+  margin: 0 0 12px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.set-section .btn.danger {
+  margin-top: 12px;
+  border-color: var(--error);
+}
+
+.status.ok {
+  color: #1f6b43;
+}
+
+.tag,
+.choice-text .tag {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 6px;
+  background: var(--ink);
+  color: var(--on-ink);
+  font-size: 0.75rem;
+  font-weight: 700;
+  vertical-align: 1px;
+}
+
+.local-note {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin-top: 24px;
+  padding: 16px;
+  background: var(--tone);
+  color: var(--ink);
+}
+
+.local-note svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+.local-note p {
+  margin: 0;
+  color: var(--text);
 }
 
 .toast {

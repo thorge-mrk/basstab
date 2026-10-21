@@ -90,11 +90,11 @@ export function renderSource(root: HTMLElement, ctx: Ctx) {
 
   // Modell kompakt als Auswahl
   const modelSelect = h('select', { id: 'model', 'aria-describedby': 'model-hint' });
-  const known = MODELS.some((m) => m.id === prefs.model);
   for (const m of MODELS) modelSelect.add(new Option(m.label, m.id, false, m.id === prefs.model));
-  if (!known) modelSelect.add(new Option(prefs.model, prefs.model, false, true));
+  // eigene Modell-ID aus den Einstellungen mit anbieten
+  if (!MODELS.some((m) => m.id === prefs.model)) modelSelect.add(new Option(`Eigenes: ${prefs.model}`, prefs.model, false, true));
   const modelHint = h('span', { id: 'model-hint', class: 'help inline' });
-  const syncHint = () => (modelHint.textContent = MODELS.find((m) => m.id === modelSelect.value)?.hint ?? 'eigenes Modell');
+  const syncHint = () => (modelHint.textContent = MODELS.find((m) => m.id === modelSelect.value)?.hint ?? 'eigene Modell-ID – ändern in den Einstellungen');
   modelSelect.addEventListener('change', () => {
     prefs.model = modelSelect.value;
     savePrefs();

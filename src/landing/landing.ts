@@ -88,13 +88,29 @@ function story() {
     readTimer = window.setInterval(step, reduce ? 0 : 420);
   };
 
-  // Desktop: Schritte scrollen am gepinnten Blatt vorbei. Telefon: Schritte zum Wischen unter dem Blatt.
-  const phone = matchMedia('(max-width: 900px)').matches;
+  // Desktop: Schritte scrollen am gepinnten Blatt vorbei. Telefon: Blatt bleibt stehen, Scrollen schaltet die Schritte.
+  const phone = matchMedia('(max-width: 900px)');
   const io = new IntersectionObserver((entries) => {
+    if (phone.matches) return;
     for (const e of entries) if (e.isIntersecting) setState((e.target as HTMLElement).dataset.state!);
-  }, phone ? { root: $('.beats'), threshold: 0.6 } : { rootMargin: '-45% 0px -45% 0px' });
+  }, { rootMargin: '-45% 0px -45% 0px' });
   beats.forEach((b) => io.observe(b));
   beats[0].classList.add('is-active');
+
+  const section = $('.story');
+  let ticking = false;
+  const onScroll = () => {
+    if (ticking || !phone.matches) return;
+    ticking = true;
+    requestAnimationFrame(() => {
+      ticking = false;
+      const r = section.getBoundingClientRect();
+      const p = Math.min(0.999, Math.max(0, -r.top / Math.max(1, section.offsetHeight - innerHeight)));
+      setState(beats[Math.floor(p * beats.length)].dataset.state!);
+    });
+  };
+  addEventListener('scroll', onScroll, { passive: true });
+  addEventListener('resize', onScroll);
 
   whenNear(sheet, async () => {
     const { ScoreView, texFor } = await loadEngine();
@@ -145,7 +161,7 @@ function grip() {
 }
 
 // ---------------------------------------------------------------------------
-// Zeichen-Galerie: Karten wandern über das gehaltene Foto (nur Desktop)
+// Zeichen-Galerie: Karten wandern über das gehaltene Foto
 
 function showcase() {
   const section = $('.showcase');
@@ -157,40 +173,54 @@ function showcase() {
     const { ScoreView, texFor } = await loadEngine();
     for (const card of $$('.card')) {
       const src = SHOWCASE[card.dataset.example!];
-      if (src) new ScoreView($('.card-score', card), { bare: true, scale: innerWidth > 900 ? 1.15 : 0.9 }).render(texFor(src, { view: 'both' }));
+      if (src) new ScoreView($('.card-score', card), { bare: true, scale: innerWidth > 900 ? 1.1 : 0.85 }).render(texFor(src, { view: 'both' }));
     }
   }, '900px');
 
+  // Höhe des Abschnitts = Bildschirm + Kartenstrecke, damit Scrollen und Wandern zusammenpassen
+  let travel = 0;
+  const measure = () => {
+    const win = track.parentElement as HTMLElement;
+    travel = Math.max(0, track.offsetLeft + track.scrollWidth - win.clientWidth);
+    section.style.height = reduce ? '' : `${Math.round(innerHeight + travel * (wide.matches ? 0.5 : 1))}px`;
+  };
+
+  const texts = $$('.card h3, .card p', track);
+  const textRange = document.createRange();
   let ticking = false;
   const onScroll = () => {
     if (ticking) return;
     ticking = true;
     requestAnimationFrame(() => {
       ticking = false;
-      if (!wide.matches || reduce) {
-        track.style.transform = '';
-        title.style.transform = '';
-        return;
-      }
+      if (reduce) return;
       const r = section.getBoundingClientRect();
       const range = section.offsetHeight - innerHeight;
       const p = Math.min(1, Math.max(0, -r.top / Math.max(1, range)));
-      const margin = ($('.showcase-window') as HTMLElement).offsetLeft || 40;
-      const max = track.offsetLeft + track.scrollWidth - (innerWidth - 2 * margin);
-      track.style.transform = `translate3d(${-p * max}px, 0, 0)`;
-      // Karten, die gerade nur halb im Fenster sind, zeigen ihren Text erst ganz drinnen
+      track.style.transform = `translate3d(${-p * travel}px, 0, 0)`;
+      // Text einer Karte erst zeigen, wenn er ganz im Fenster steht – nie angeschnitten
       const win = track.parentElement!.getBoundingClientRect();
-      for (const c of track.children) {
-        const r = c.getBoundingClientRect();
-        c.classList.toggle('is-cut-right', r.right > win.right + 1);
-        c.classList.toggle('is-cut-left', r.left < win.left - 1);
+      for (const el of texts) {
+        textRange.selectNodeContents(el); // Ausmaß des Textes selbst, nicht der ganzen Zeile
+        const er = textRange.getBoundingClientRect();
+        el.classList.toggle('is-cut', er.left < win.left - 1 || er.right > win.right + 1);
       }
-      // Überschrift wandert den Karten voraus aus dem Bild
-      title.style.transform = `translate3d(${-Math.min(1, p * 2.2) * (title.offsetWidth + margin * 2)}px, 0, 0)`;
+      // Desktop: Überschrift wandert den Karten voraus aus dem Bild
+      const margin = (track.parentElement as HTMLElement).offsetLeft;
+      title.style.transform = wide.matches ? `translate3d(${-Math.min(1, p * 2.2) * (title.offsetWidth + margin * 2)}px, 0, 0)` : '';
     });
   };
+  // nur bei echter Breitenänderung neu messen (die Adressleiste am Handy ändert ständig die Höhe)
+  let lastWidth = innerWidth;
+  addEventListener('resize', () => {
+    if (innerWidth !== lastWidth) {
+      lastWidth = innerWidth;
+      measure();
+    }
+    onScroll();
+  });
+  measure();
   addEventListener('scroll', onScroll, { passive: true });
-  addEventListener('resize', onScroll);
   onScroll();
 }
 
@@ -229,7 +259,8 @@ function faq() {
       t.closest('li')!.classList.toggle('is-open', i === j);
     });
     pane.setAttribute('aria-labelledby', tabs[i].id);
-    pane.textContent = tabs[i].nextElementSibling!.textContent;
+    $('.faq-q', pane).textContent = tabs[i].textContent;
+    $('.faq-text', pane).textContent = tabs[i].nextElementSibling!.textContent;
     if (!reduce) pane.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 150, easing: 'ease-out' });
     if (focus) tabs[i].focus();
   };

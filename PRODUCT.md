@@ -30,7 +30,7 @@ BassTab macht aus einem Foto einer Bassstimme ein druckfertiges PDF mit Notenzei
 ## Capabilities and Constraints
 
 - Statische Seite auf GitHub Pages (`/` Landing, `/tool/` Werkzeug). Vite + TypeScript, alphaTab für Notensatz, jsPDF.
-- Erkennung via Gemini (Standard `gemini-3.5-flash-lite`, wählbar: 3.8 Flash, 4 Argon, eigene ID). Key nur im localStorage.
+- Erkennung via Gemini (Standard `gemini-3.5-flash-lite`, wählbar: 3.8 Flash oder eigene ID). Key nur im localStorage.
 - Erkennung ist nicht fehlerfrei; das Produkt muss die Kontrolle durch den Menschen leicht machen.
 - Offen: kein Konto, keine Synchronisation, keine Wiedergabe/Audio.
 

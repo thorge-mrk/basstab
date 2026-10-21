@@ -77,11 +77,11 @@ function migrate(p: Prefs): Prefs {
   try {
     const oldKey = localStorage.getItem(PREFIX + 'apiKey');
     if (oldKey && !p.apiKey) p.apiKey = oldKey;
-    const oldModel = localStorage.getItem(PREFIX + 'model');
-    if (oldModel && p.model === DEFAULT_MODEL && !oldModel.startsWith('{')) p.model = oldModel;
   } catch {
     /* egal */
   }
+  // Argon wird nicht mehr angeboten; eigene Modell-IDs bleiben erlaubt
+  if (!p.model?.trim() || p.model === 'gemini-4-argon') p.model = DEFAULT_MODEL;
   return p;
 }
 

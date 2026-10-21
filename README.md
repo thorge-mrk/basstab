@@ -8,7 +8,7 @@ Statische Web-App: Fotos von Bassnoten hochladen → Noten werden erkannt → au
 ## Ablauf
 
 1. **Quelle**
-   - **Foto**: Erkennung mit Gemini – Modell wählbar (Standard `gemini-3.5-flash-lite`, außerdem `gemini-3.8-flash`, `gemini-4-argon` oder eigene Modell-ID) über deinen eigenen Google-AI-Studio-API-Key.
+   - **Foto**: Erkennung mit Gemini – Modell wählbar (Standard `gemini-3.5-flash-lite`, außerdem `gemini-3.8-flash` oder eine eigene Modell-ID) über deinen eigenen Google-AI-Studio-API-Key.
    - **MusicXML**: ohne KI, z. B. aus Audiveris, MuseScore oder einer Scan-App.
    - **Beispiel**: Demo zum Ausprobieren.
 2. **Lesen**: Gemini liefert pro Takt Inhalt und Position im Foto; jeder fertige Takt leuchtet live auf dem Foto auf.

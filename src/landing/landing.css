@@ -1,8 +1,10 @@
 @import '../tokens.css';
 
 :root {
-  --m: clamp(16px, 3vw, 40px); /* äußerer Rand, überall gleich */
-  --gap-section: clamp(120px, 14vw, 200px);
+  /* äußerer Rand: wächst mit dem Fenster, ab 1280px Inhalt bleibt die Mitte stehen */
+  --m: max(clamp(20px, 5vw, 72px), calc((100% - 1280px) / 2));
+  --col-gap: clamp(24px, 4vw, 64px);
+  --gap-section: clamp(88px, 9vw, 144px);
   --step-small: clamp(0.8125rem, 0.79rem + 0.1vw, 0.875rem);
   --step-body: clamp(1.0625rem, 1rem + 0.25vw, 1.1875rem);
   --step-lead: clamp(1.25rem, 1.1rem + 0.7vw, 1.625rem);
@@ -36,6 +38,19 @@ body.landing {
   font-stretch: 150%;
   text-transform: uppercase;
   letter-spacing: -0.01em;
+}
+
+/* Gemeinsames Raster: 12 Spalten zwischen den Rändern */
+.story,
+.grip,
+.models,
+.faq,
+.cta {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  column-gap: var(--col-gap);
+  padding-left: var(--m);
+  padding-right: var(--m);
 }
 
 /* ---------- Buttons ---------- */
@@ -82,7 +97,7 @@ body.landing {
   display: grid;
   place-items: center;
   min-height: 100svh;
-  padding: var(--m);
+  padding: 72px var(--m);
   overflow: hidden;
   background: #0d1c1e;
 }
@@ -122,11 +137,9 @@ body.landing {
 .hero-card {
   position: relative;
   display: grid;
-  grid-template-rows: auto 1fr auto;
-  gap: 32px;
-  width: min(56vw, 860px);
-  min-height: 62svh;
-  padding: 32px;
+  gap: clamp(28px, 3vw, 40px);
+  width: min(100%, 820px);
+  padding: clamp(24px, 3vw, 40px);
   background: var(--ink);
   color: var(--paper);
 }
@@ -136,7 +149,7 @@ body.landing {
   justify-content: space-between;
   gap: 16px;
   margin: 0;
-  font-size: var(--step-title);
+  font-size: clamp(2rem, 1.2rem + 2.6vw, 3.5rem);
   line-height: 1;
   font-weight: 800;
   font-stretch: 150%;
@@ -146,23 +159,24 @@ body.landing {
 
 .hero-body {
   display: grid;
-  align-content: start;
-  gap: 28px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: start;
+  gap: 24px var(--col-gap);
 }
 
 .hero-facts {
   display: grid;
   font-size: var(--step-lead);
-  line-height: 1.15;
+  line-height: 1.2;
   font-weight: 700;
   font-stretch: 110%;
   letter-spacing: -0.01em;
 }
 
 .hero-sentence {
-  max-width: 30ch;
-  font-size: var(--step-lead);
-  line-height: 1.3;
+  max-width: 32ch;
+  font-size: var(--step-body);
+  line-height: 1.45;
 }
 
 .hero-foot {
@@ -176,6 +190,11 @@ body.landing {
   font-size: var(--step-body);
 }
 
+.hero-foot .btn {
+  min-height: 56px;
+  padding: 16px 32px;
+}
+
 .hero-link {
   justify-self: end;
   color: var(--paper);
@@ -185,16 +204,18 @@ body.landing {
 /* ---------- So geht's: gepinntes Blatt, wechselnder Zustand ---------- */
 
 .story {
-  display: grid;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
-  column-gap: 24px;
-  padding: var(--gap-section) var(--m) 0;
+  padding-top: var(--gap-section);
+}
+
+/* Desktop: Text und Blatt hängen direkt im Raster */
+.story-pin {
+  display: contents;
 }
 
 .story-text {
   grid-column: 1 / span 5;
   /* Platz nach dem letzten Schritt, damit das gepinnte Blatt bis zum Ende stehen bleibt */
-  padding-bottom: 16vh;
+  padding-bottom: 12vh;
 }
 
 .story-text h2 {
@@ -207,13 +228,9 @@ body.landing {
   display: grid;
   align-content: center;
   gap: 14px;
-  min-height: 80vh;
+  min-height: 46vh;
   color: var(--text-2);
   transition: color 240ms ease;
-}
-
-.beat:first-of-type {
-  min-height: 70vh;
 }
 
 .beat-line {
@@ -228,11 +245,15 @@ body.landing {
 }
 
 .beat p:not(.beat-line) {
-  max-width: 42ch;
+  max-width: 40ch;
+}
+
+.beat-dots {
+  display: none;
 }
 
 .story-stage {
-  grid-column: 7 / span 6;
+  grid-column: 6 / span 7;
   position: sticky;
   top: 14vh;
   align-self: start;
@@ -405,13 +426,11 @@ body.landing {
 /* ---------- Griffbild: ganzes Feld in Tinte ---------- */
 
 .grip {
-  display: grid;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
-  column-gap: 24px;
-  row-gap: 40px;
+  row-gap: clamp(40px, 5vw, 72px);
   align-items: center;
-  margin-top: var(--gap-section);
-  padding: clamp(72px, 9vw, 140px) var(--m);
+  margin-top: clamp(32px, 4vw, 64px);
+  padding-top: clamp(72px, 8vw, 128px);
+  padding-bottom: clamp(72px, 8vw, 128px);
   background: var(--ink);
   color: var(--paper);
 }
@@ -479,26 +498,8 @@ body.landing {
 }
 
 .grip-sheet {
-  grid-column: 7 / span 6;
+  grid-column: 6 / span 7;
   margin: 0;
-}
-
-.grip-video {
-  margin: 8px 0 0;
-}
-
-.grip-video video {
-  display: block;
-  width: 100%;
-  height: auto;
-  aspect-ratio: 16 / 9;
-  object-fit: cover;
-  background: #0d1c1e;
-}
-
-.grip-video figcaption {
-  margin-top: 8px;
-  font-size: var(--step-small);
 }
 
 .grip-score {
@@ -513,11 +514,31 @@ body.landing {
   font-variant-numeric: tabular-nums;
 }
 
+.grip-video {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.grip-video video {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 3 / 1;
+  object-fit: cover;
+  background: #0d1c1e;
+}
+
+.grip-video figcaption {
+  margin-top: 10px;
+  font-size: var(--step-small);
+}
+
 /* ---------- Zeichen: Karten über gehaltenem Foto ---------- */
 
 .showcase {
   position: relative;
-  height: 240vh;
+  /* genaue Höhe setzt das Skript passend zur Kartenstrecke */
+  height: 260vh;
   background: #0d1c1e;
 }
 
@@ -540,11 +561,11 @@ body.landing {
 .showcase h2 {
   position: absolute;
   left: var(--m);
-  will-change: transform;
-  top: clamp(56px, 8vh, 96px);
+  top: clamp(56px, 9vh, 104px);
+  z-index: 1;
   max-width: 12ch;
   color: var(--paper);
-  z-index: 1;
+  will-change: transform;
 }
 
 .showcase-window {
@@ -555,10 +576,10 @@ body.landing {
 
 .showcase-track {
   position: absolute;
-  top: max(30svh, 210px);
-  left: calc(52vw - var(--m));
+  top: max(28svh, 200px);
+  left: 42%;
   display: flex;
-  gap: 40px;
+  gap: 32px;
   transform: translate3d(0, 0, 0);
   will-change: transform;
 }
@@ -566,9 +587,9 @@ body.landing {
 .card {
   flex: none;
   display: grid;
-  grid-template-rows: 68% 32%;
-  width: min(720px, 56vw);
-  height: min(520px, calc(100svh - max(30svh, 210px) - 7svh));
+  grid-template-rows: 66% 34%;
+  width: min(640px, 52vw);
+  height: min(500px, calc(100svh - max(28svh, 200px) - 8svh));
   background: var(--white);
 }
 
@@ -621,9 +642,8 @@ body.landing {
   transition: opacity 240ms ease;
 }
 
-.card.is-cut-right p,
-.card.is-cut-left h3,
-.card.is-cut-left p {
+.card .is-cut,
+.js .in .card .is-cut {
   opacity: 0;
   visibility: hidden;
   transition:
@@ -639,22 +659,18 @@ body.landing {
   color: var(--text);
 }
 
-/* ---------- Modelle: gehaltenes Foto, aktive Liste ---------- */
+/* ---------- Modelle: Foto und Liste nebeneinander ---------- */
 
 .models {
-  display: grid;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
-  column-gap: 24px;
-  padding: var(--gap-section) var(--m) 0;
+  align-items: center;
+  padding-top: var(--gap-section);
 }
 
 .models-photo {
   grid-column: 1 / span 5;
-  position: sticky;
-  top: 12vh;
-  align-self: start;
+  position: relative;
   aspect-ratio: 4 / 5;
-  max-width: 34vw;
+  max-height: 78svh;
   background: var(--tone);
 }
 
@@ -673,12 +689,13 @@ body.landing {
 }
 
 .models-list {
-  grid-column: 7 / span 5;
+  grid-column: 6 / span 7;
+  max-width: 620px;
 }
 
 .models-intro {
-  margin: 20px 0 48px !important;
-  max-width: 44ch;
+  margin: 20px 0 36px !important;
+  max-width: 48ch;
   color: var(--text);
 }
 
@@ -688,18 +705,14 @@ body.landing {
   list-style: none;
 }
 
-.models-list li + li {
-  margin-top: 2px;
-}
-
 .models-list button {
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 16px;
   width: 100%;
-  min-height: 58px;
-  padding: 8px 0;
+  min-height: 64px;
+  padding: 10px 0;
   border: 0;
   background: none;
   color: var(--text-2);
@@ -712,8 +725,16 @@ body.landing {
 }
 
 .models-list .val {
+  flex: none;
   font-size: var(--step-small);
   font-weight: 500;
+}
+
+.models-list li:first-child .val {
+  padding: 2px 8px;
+  background: var(--ink);
+  color: var(--on-ink);
+  font-weight: 700;
 }
 
 .models-list li.is-active button {
@@ -722,7 +743,7 @@ body.landing {
 
 .models-list li p {
   display: none;
-  max-width: 34ch;
+  max-width: 40ch;
   padding-bottom: 20px;
   font-size: var(--step-body);
   color: var(--text);
@@ -735,27 +756,21 @@ body.landing {
 /* ---------- Fragen: Index links, Antwort rechts ---------- */
 
 .faq {
-  display: grid;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
-  column-gap: 24px;
-  padding: var(--gap-section) var(--m);
+  row-gap: 32px;
+  padding-top: var(--gap-section);
+  padding-bottom: var(--gap-section);
+}
+
+.faq h2 {
+  grid-column: 1 / -1;
 }
 
 .faq-list {
   grid-column: 1 / span 5;
 }
 
-.faq h2 {
-  font-size: var(--step-body);
-  font-stretch: 100%;
-  letter-spacing: 0;
-  color: var(--text-2);
-  margin-bottom: 18px;
-}
-
 .faq ul {
   display: grid;
-  gap: 6px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -765,8 +780,9 @@ body.landing {
   display: flex;
   align-items: center;
   gap: 14px;
-  min-height: 40px;
-  padding: 4px 0;
+  width: 100%;
+  min-height: 48px;
+  padding: 6px 0;
   border: 0;
   background: none;
   color: var(--text-2);
@@ -774,6 +790,7 @@ body.landing {
   font-size: var(--step-body);
   text-align: left;
   cursor: pointer;
+  transition: color 160ms ease;
 }
 
 .faq [role='tab']::before {
@@ -782,7 +799,8 @@ body.landing {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--text-2);
+  background: var(--control);
+  transition: background-color 160ms ease, transform 160ms var(--ease-out);
 }
 
 .faq [role='tab'][aria-selected='true'] {
@@ -800,27 +818,38 @@ body.landing {
 }
 
 .faq-answer {
-  grid-column: 7 / span 6;
+  grid-column: 6 / span 7;
   position: sticky;
-  top: 120px;
-  align-self: start;
-  max-width: 30ch;
-  font-size: var(--step-lead);
-  line-height: 1.3;
+  top: 96px;
+  align-self: stretch;
+  display: grid;
+  align-content: start;
+  gap: 20px;
+  padding: clamp(28px, 3.4vw, 56px);
+  background: var(--tone);
   color: var(--ink);
 }
 
-/* ---------- Schluss: letztes Foto, Text daneben ---------- */
+.faq-q {
+  font-size: var(--step-small);
+  font-weight: 700;
+  color: var(--text-2);
+}
+
+.faq-text {
+  max-width: 34ch;
+  font-size: var(--step-lead);
+  line-height: 1.35;
+}
+
+/* ---------- Schluss: letztes Foto, großer Satz daneben ---------- */
 
 .cta {
   position: relative;
-  min-height: 90svh;
-  display: grid;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
-  column-gap: 24px;
-  align-items: end;
-  padding: var(--m);
-  padding-bottom: clamp(48px, 10svh, 120px);
+  min-height: 88svh;
+  align-items: center;
+  padding-top: clamp(72px, 10svh, 120px);
+  padding-bottom: clamp(72px, 10svh, 120px);
   overflow: hidden;
   background: #0d1c1e;
 }
@@ -839,8 +868,8 @@ body.landing {
 .cta::after {
   content: '';
   position: absolute;
-  inset: 0 0 0 45%;
-  background: linear-gradient(to right, rgb(0 0 0 / 0), rgb(0 0 0 / 0.72) 40%); /* taste-skill-ignore: neutrale Abdunklung unter Text auf Foto */
+  inset: 0 0 0 40%;
+  background: linear-gradient(to right, rgb(0 0 0 / 0), rgb(0 0 0 / 0.74) 38%); /* taste-skill-ignore: neutrale Abdunklung unter Text auf Foto */
   pointer-events: none;
 }
 
@@ -849,21 +878,30 @@ body.landing {
   z-index: 1;
   grid-column: 7 / span 6;
   display: grid;
-  gap: 20px;
+  gap: 28px;
   justify-items: start;
   color: var(--paper);
 }
 
 .cta-text h2 {
-  font-size: var(--step-head);
+  font-size: clamp(3rem, 1.6rem + 4.6vw, 6.5rem);
+  line-height: 0.95;
   font-weight: 400;
   font-stretch: 100%;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
 }
 
 .cta-text p {
-  max-width: 36ch;
-  font-size: var(--step-body);
+  max-width: 30ch;
+  font-size: var(--step-lead);
+  line-height: 1.35;
+}
+
+.cta-text .btn {
+  min-height: 64px;
+  margin-top: 8px;
+  padding: 18px 36px;
+  font-size: var(--step-lead);
 }
 
 /* ---------- Fuß ---------- */
@@ -951,33 +989,46 @@ body.landing {
   transition-property: opacity, transform;
 }
 
+/* ---------- Tablet ---------- */
+
+@media (max-width: 1100px) {
+  .hero-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .card {
+    width: min(600px, 64vw);
+  }
+}
+
 /* ---------- Telefon ---------- */
 
 @media (max-width: 900px) {
+  :root {
+    --m: 16px;
+    --col-gap: 16px;
+    --gap-section: 88px;
+  }
+
   .hero {
-    align-items: center;
     padding: 16px;
   }
 
   .hero-card {
     width: 100%;
-    min-height: 58svh;
     padding: 24px 20px;
     gap: 24px;
   }
 
   .hero-title {
-    flex-direction: column;
-    gap: 0;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: 0 0.3em;
     font-size: clamp(2rem, 9vw, 3rem);
   }
 
-  .hero-title span:nth-child(2) {
-    display: none;
-  }
-
-  .hero-title span:nth-child(3)::before {
-    content: 'zu ';
+  .hero-title span:first-child {
+    flex-basis: 100%;
   }
 
   .hero-facts {
@@ -985,7 +1036,7 @@ body.landing {
   }
 
   .hero-sentence {
-    font-size: 1.125rem;
+    font-size: 1.0625rem;
   }
 
   .hero-foot {
@@ -1013,14 +1064,9 @@ body.landing {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .story {
-    padding-top: 96px;
-  }
-
-  .story-text,
-  .story-stage,
   .grip-text,
   .grip-sheet,
+  .grip-video,
   .models-photo,
   .models-list,
   .faq-list,
@@ -1029,42 +1075,69 @@ body.landing {
     grid-column: 1;
   }
 
+  /* Geschichte: Blatt bleibt stehen, die Schritte wechseln beim Scrollen darunter */
+  .story {
+    display: block;
+    height: 400svh;
+    padding: 0;
+  }
+
+  .story-pin {
+    position: sticky;
+    top: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 16px;
+    height: 100svh;
+    padding: 24px 16px;
+  }
+
   .story-text {
     display: contents;
   }
 
-  .story-text h2 {
-    grid-row: 1;
-    margin-bottom: 16px;
-  }
-
   .story-stage {
-    grid-row: 2;
+    order: 1;
     position: static;
+    align-self: stretch;
     height: auto;
-    padding: 0;
   }
 
   .beats {
-    grid-row: 3;
-    display: flex;
-    gap: 12px;
-    margin: 20px -16px 0;
-    padding: 0 16px 8px;
-    overflow-x: auto;
-    scroll-snap-type: x mandatory;
-    scrollbar-width: none;
+    order: 2;
+    display: grid;
   }
 
-  .beats::-webkit-scrollbar {
-    display: none;
+  .beat {
+    grid-area: 1 / 1;
+    align-content: start;
+    gap: 8px;
+    min-height: 0;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(8px);
+    transition:
+      opacity 240ms ease,
+      transform 320ms var(--ease-out),
+      visibility 0s linear 240ms;
+  }
+
+  .beat.is-active {
+    opacity: 1;
+    visibility: visible;
+    transform: none;
+    transition-delay: 0s;
+  }
+
+  .beat-line {
+    font-size: 1.5rem;
   }
 
   .beat-dots {
-    grid-row: 4;
+    order: 3;
     display: flex;
     gap: 8px;
-    margin-top: 12px;
   }
 
   .beat-dots span {
@@ -1080,94 +1153,58 @@ body.landing {
     transform: scale(1.3);
   }
 
-  .beat,
-  .beat:first-of-type {
-    flex: 0 0 84%;
-    min-height: 0;
-    align-content: start;
-    padding: 20px;
-    background: var(--tone);
-    scroll-snap-align: start;
+  .sheet-paper {
+    padding-top: 32px;
   }
 
   .sheet-question {
     position: absolute;
     right: 8px;
-    bottom: 28px;
+    bottom: 20px;
     padding: 10px 12px;
     font-size: 0.9375rem;
   }
 
   .grip {
-    padding: 72px 16px;
+    margin-top: 0;
+    padding-top: 72px;
+    padding-bottom: 72px;
   }
 
-  .showcase {
-    height: auto;
-    padding: 72px 0;
+  .grip-video video {
+    aspect-ratio: 16 / 9;
   }
 
-  .showcase-stage {
-    position: static;
-    display: flex;
-    flex-direction: column;
-    height: auto;
-    overflow: visible;
-  }
-
-  .stub {
-    display: none;
-  }
-
-  .showcase-photo {
-    position: static;
-    display: block;
-    aspect-ratio: 4 / 5;
-    height: auto;
-  }
-
+  /* Zeichen: auch am Telefon gepinnt, Karten wandern seitlich */
   .showcase h2 {
-    order: -1;
-    position: static;
+    top: 56px;
+    left: 16px;
+    right: 16px;
     max-width: none;
-    padding: 0 16px 24px;
+    font-size: 2rem;
     transform: none !important;
-  }
-
-  .showcase-window {
-    position: static;
-    overflow: visible;
   }
 
   .showcase-track {
-    position: static;
-    flex-direction: column;
-    gap: 24px;
-    margin: 24px 16px 0;
-    transform: none !important;
-  }
-
-  .card.is-cut-right p,
-  .card.is-cut-left h3,
-  .card.is-cut-left p {
-    opacity: 1;
-    visibility: visible;
+    top: 156px;
+    left: 0;
+    gap: 16px;
   }
 
   .card {
-    width: 100%;
-    height: auto;
-    grid-template-rows: auto auto;
+    width: min(82vw, 420px);
+    height: min(520px, calc(100svh - 156px - 40px));
+    grid-template-rows: minmax(0, 1fr) auto;
   }
 
   .card-panel {
     grid-template-columns: 1fr;
-    min-height: 140px;
+    gap: 8px;
     padding: 20px;
   }
 
   .card h3 {
-    font-size: 1.625rem;
+    font-size: 1.5rem;
   }
 
   .card p {
@@ -1175,21 +1212,30 @@ body.landing {
     text-align: left;
   }
 
+  .stub {
+    display: none;
+  }
+
   .models {
-    padding-top: 120px;
+    row-gap: 32px;
   }
 
   .models-photo {
-    position: relative;
-    top: auto;
-    aspect-ratio: auto;
-    max-width: none;
-    height: 38svh;
-    margin: 0 -16px;
+    aspect-ratio: 4 / 3;
+    max-height: none;
+  }
+
+  .models-photo img {
+    object-position: 50% 25%;
   }
 
   .models-list {
-    padding-top: 32px;
+    grid-row: 1;
+    max-width: none;
+  }
+
+  .faq {
+    row-gap: 24px;
   }
 
   .faq-answer {
@@ -1197,8 +1243,8 @@ body.landing {
   }
 
   .faq-inline {
-    padding: 4px 0 16px 22px;
-    font-size: 1.1875rem;
+    padding: 0 0 18px 22px;
+    font-size: 1.0625rem;
     color: var(--ink);
   }
 
@@ -1212,17 +1258,26 @@ body.landing {
     background: var(--ink);
   }
 
+  .cta::after {
+    display: none;
+  }
+
   .cta-photo {
     position: static;
-    height: 70svh;
+    height: 52svh;
   }
 
   .cta-text {
-    padding: 32px 16px 40px;
+    gap: 20px;
+    padding: 40px 16px 48px;
   }
 
   .cta-text h2 {
-    font-size: 1.75rem;
+    font-size: clamp(2.5rem, 12vw, 3.5rem);
+  }
+
+  .cta-text p {
+    font-size: 1.1875rem;
   }
 
   .cta-text .btn {
@@ -1238,11 +1293,25 @@ body.landing {
   .js .rise,
   .sbox,
   .sheet-question,
-  .stub {
+  .stub,
+  .beat {
     transform: none !important;
   }
 
   .sheet-paper {
     transition: none;
+  }
+
+  /* ohne Bewegung: Karten zum Wischen statt scrollgesteuert */
+  .showcase {
+    height: auto;
+  }
+
+  .showcase-stage {
+    position: relative;
+  }
+
+  .showcase-window {
+    overflow-x: auto;
   }
 }

@@ -10,20 +10,31 @@ import { prefs } from './state';
 /** Auswahl des KI-Modells als Liste (Radio), plus eigene Modell-ID. */
 export function modelPicker(initial: string): { el: HTMLElement; value: () => string } {
   const name = `model-${Math.random().toString(36).slice(2, 7)}`;
-  const known = MODELS.some((m) => m.id === initial);
-  const custom = h('input', { type: 'text', class: 'model-custom', placeholder: 'z. B. gemini-3.5-flash', 'aria-label': 'Eigene Modell-ID', value: known ? '' : initial });
+  const known = !initial || MODELS.some((m) => m.id === initial);
+  const selected = known ? initial || MODELS[0].id : 'custom';
+  const custom = h('input', {
+    type: 'text', class: 'model-custom', spellcheck: 'false', autocomplete: 'off',
+    placeholder: 'z. B. gemini-3.8-pro', 'aria-label': 'Eigene Modell-ID', value: known ? '' : initial,
+  });
   const radios: HTMLInputElement[] = [];
-  const row = (id: string, label: string, hint: string) => {
-    const r = h('input', { type: 'radio', name, value: id, checked: known ? id === initial : id === 'custom' });
+  const row = (id: string, label: string, hint: string, tag?: string) => {
+    const r = h('input', { type: 'radio', name, value: id, checked: id === selected });
     radios.push(r);
-    return h('label', { class: 'choice' }, r, h('span', { class: 'choice-text' }, h('strong', {}, label), h('span', {}, hint)));
+    return h('label', { class: 'choice' }, r,
+      h('span', { class: 'choice-text' },
+        h('strong', {}, label, tag ? h('span', { class: 'tag' }, tag) : null),
+        h('span', {}, hint)));
   };
   const el = h('div', { class: 'choices', role: 'radiogroup', 'aria-label': 'KI-Modell' },
-    ...MODELS.map((m) => row(m.id, m.label, m.hint)),
-    row('custom', 'Eigenes Modell', 'jede Gemini-Modell-ID'),
+    ...MODELS.map((m, i) => row(m.id, m.label, m.hint, i === 0 ? 'empfohlen' : undefined)),
+    row('custom', 'Eigenes Modell', 'jede Gemini-Modell-ID aus dem AI Studio'),
     custom,
   );
-  const sync = () => (custom.hidden = !radios.find((r) => r.value === 'custom')?.checked);
+  const sync = () => {
+    const on = radios.find((r) => r.value === 'custom')!.checked;
+    custom.hidden = !on;
+    if (on && document.activeElement?.closest('.choices') === el) custom.focus({ preventScroll: true });
+  };
   el.addEventListener('change', sync);
   sync();
   return {
@@ -33,6 +44,11 @@ export function modelPicker(initial: string): { el: HTMLElement; value: () => st
       return v === 'custom' ? custom.value.trim() || MODELS[0].id : v;
     },
   };
+}
+
+/** API-Keys aus dem AI Studio: ältere beginnen mit „AIza“, neue mit „AQ.“ */
+export function looksLikeKey(key: string): boolean {
+  return /^[A-Za-z0-9._-]{20,}$/.test(key.trim());
 }
 
 /** Rendert eine kleine Notation (ein Takt) als Noten + Tab. */

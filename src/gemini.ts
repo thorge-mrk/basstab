@@ -3,9 +3,8 @@
 import { GoogleGenAI, MediaResolution, ThinkingLevel, ApiError, type Part } from '@google/genai';
 
 export const MODELS = [
-  { id: 'gemini-3.5-flash-lite', label: 'Gemini 3.5 Flash-Lite', hint: 'schnell und günstig' },
-  { id: 'gemini-3.8-flash', label: 'Gemini 3.8 Flash', hint: 'genauer bei schwierigen Fotos' },
-  { id: 'gemini-4-argon', label: 'Gemini 4 Argon', hint: 'am stärksten, teurer' },
+  { id: 'gemini-3.5-flash-lite', label: 'Gemini 3.5 Flash-Lite', hint: 'schnell und günstig – für saubere Fotos' },
+  { id: 'gemini-3.8-flash', label: 'Gemini 3.8 Flash', hint: 'genauer – für schiefe Handyfotos und dichte Seiten' },
 ];
 export const DEFAULT_MODEL = MODELS[0].id;
 

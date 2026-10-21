@@ -49,6 +49,7 @@
 
     <main>
       <section class="story" id="ablauf" aria-labelledby="story-title">
+        <div class="story-pin">
         <div class="story-text">
           <h2 id="story-title">So geht's</h2>
           <div class="beats">
@@ -87,6 +88,7 @@
             <p class="sheet-status"><span data-for="read">liest Takt <b class="num">4</b> von 4</span><span data-for="check">1 Frage</span><span data-for="tab">PDF fertig</span></p>
           </div>
         </div>
+        </div>
       </section>
 
       <section class="grip" id="griffbild" aria-labelledby="grip-title">
@@ -104,17 +106,18 @@
             <label><input type="radio" name="open" value="neutral" checked /><span>normal</span></label>
             <label><input type="radio" name="open" value="avoid" /><span>vermeiden</span></label>
           </fieldset>
-          <figure class="grip-video">
-            <video muted loop playsinline preload="none" poster="./img/bass-hands.jpg" width="960" height="540" aria-label="Hände auf dem Griffbrett eines 5-saitigen E-Basses, Slap und Flageolett">
-              <source src="./img/bass-hands.mp4" type="video/mp4" />
-            </video>
-            <figcaption>Slap und Flageolett auf dem 5-Saiter</figcaption>
-          </figure>
+
         </div>
         <figure class="grip-sheet">
           <div class="grip-score" role="img" aria-label="Riff in Noten und Tab, Griffbild je nach Einstellung"></div>
           <figcaption class="grip-readout" aria-live="polite">Wird gesetzt …</figcaption>
         </figure>
+        <figure class="grip-video">
+            <video muted loop playsinline preload="none" poster="./img/bass-hands.jpg" width="960" height="540" aria-label="Hände auf dem Griffbrett eines 5-saitigen E-Basses, Slap und Flageolett">
+              <source src="./img/bass-hands.mp4" type="video/mp4" />
+            </video>
+            <figcaption>Slap und Flageolett auf dem 5-Saiter</figcaption>
+          </figure>
       </section>
 
       <section class="showcase" id="zeichen" aria-labelledby="show-title">
@@ -138,28 +141,26 @@
         <div class="models-photo">
           <img data-for="0" src="./img/pettiford.jpg" width="800" height="1000" loading="lazy" alt="Oscar Pettiford mit Kontrabass, New York 1946" />
           <img data-for="1" src="./img/slam-stewart.jpg" width="800" height="1000" loading="lazy" alt="Slam Stewart spielt Kontrabass mit Bogen, New York 1946" />
-          <img data-for="2" src="./img/pettiford-raglin.jpg" width="800" height="1000" loading="lazy" alt="Oscar Pettiford und Junior Raglin, zwei Bassisten nebeneinander" />
-          <img data-for="3" src="./img/ray-brown.jpg" width="800" height="1000" loading="lazy" alt="Milt Jackson am Vibrafon, dahinter Ray Brown am Bass" />
-          <img data-for="4" src="./img/52nd-street-800.jpg" width="800" height="1052" loading="lazy" alt="Die 52nd Street in New York bei Nacht, 1948" />
+          <img data-for="2" src="./img/ray-brown.jpg" width="800" height="1000" loading="lazy" alt="Ray Brown am Kontrabass neben Milt Jackson, New York um 1947" />
+          <img data-for="3" src="./img/pettiford-raglin.jpg" width="800" height="1000" loading="lazy" alt="Oscar Pettiford und Junior Raglin, zwei Bassisten nebeneinander" />
         </div>
         <div class="models-list">
-          <h2 id="models-title">Dein Key, dein Modell</h2>
-          <p class="models-intro">BassTab hat keinen eigenen Server. Dein Google-AI-Studio-Key bleibt in deinem Browser, die Fotos gehen direkt an Google.</p>
+          <h2 id="models-title">Wähl aus, wie du es nutzt</h2>
+          <p class="models-intro">BassTab läuft komplett in deinem Browser – kein Konto, kein eigener Server. Fürs Lesen von Fotos trägst du einmal deinen kostenlosen Google-AI-Studio-Key ein, er bleibt auf deinem Gerät. Hast du die Noten schon digital, geht es ganz ohne KI.</p>
           <ul>
-            <li class="is-active"><button type="button" aria-expanded="true"><span>Gemini 3.5 Flash-Lite</span><span class="val">schnell, günstig</span></button><p>Die schnelle Wahl für saubere, gut ausgeleuchtete Fotos. Voreingestellt.</p></li>
-            <li><button type="button" aria-expanded="false"><span>Gemini 3.8 Flash</span><span class="val">genauer</span></button><p>Liest schiefe Handyfotos und dichte Seiten zuverlässiger.</p></li>
-            <li><button type="button" aria-expanded="false"><span>Gemini 4 Argon</span><span class="val">am stärksten</span></button><p>Für schwierige Vorlagen: Kopien von Kopien, kleine Noten, viele Zeichen. Kostet mehr pro Seite.</p></li>
-            <li><button type="button" aria-expanded="false"><span>Eigenes Modell</span><span class="val">jede ID</span></button><p>Kommt ein neues Gemini-Modell, trägst du seine ID einfach selbst ein.</p></li>
-            <li><button type="button" aria-expanded="false"><span>MusicXML</span><span class="val">ohne KI</span></button><p>Hast du die Noten schon digital, etwa aus MuseScore oder Audiveris? Dann braucht es gar keine KI und keinen Key.</p></li>
+            <li class="is-active"><button type="button" aria-expanded="true"><span>Gemini 3.5 Flash-Lite</span><span class="val">empfohlen</span></button><p>Schnell und günstig. Liest saubere, gut ausgeleuchtete Fotos zuverlässig – damit startet BassTab.</p></li>
+            <li><button type="button" aria-expanded="false"><span>Gemini 3.8 Flash</span><span class="val">genauer</span></button><p>Für schiefe Handyfotos, Kopien von Kopien und dichte Seiten. Liest gründlicher, kostet etwas mehr pro Seite.</p></li>
+            <li><button type="button" aria-expanded="false"><span>Eigenes Modell</span><span class="val">jede Gemini-ID</span></button><p>Du willst ein anderes oder neueres Gemini-Modell ausprobieren? Trag seine Modell-ID aus dem AI Studio in den Einstellungen ein.</p></li>
+            <li><button type="button" aria-expanded="false"><span>MusicXML</span><span class="val">ohne KI</span></button><p>Noten aus MuseScore, Audiveris oder einer Scan-App? Datei öffnen, fertig – ohne KI und ohne Key.</p></li>
           </ul>
         </div>
       </section>
 
       <section class="faq" id="fragen" aria-labelledby="faq-title">
+        <h2 id="faq-title">Fragen</h2>
         <div class="faq-list">
-          <h2 id="faq-title">Fragen</h2>
           <ul role="tablist" aria-orientation="vertical">
-            <li><button role="tab" type="button" aria-selected="true" aria-controls="faq-a" id="q0">Was kostet BassTab?</button><p class="faq-inline">BassTab selbst nichts. Du zahlst nur Google für das Lesen über deinen eigenen Key – je nach Modell meist ein paar Cent pro Seite. Viele Keys haben ein kostenloses Kontingent.</p></li>
+            <li><button role="tab" type="button" aria-selected="true" aria-controls="faq-a" id="q0">Was kostet BassTab?</button><p class="faq-inline">BassTab selbst nichts. Du zahlst höchstens Google für das Lesen über deinen eigenen Key – je nach Modell meist ein paar Cent pro Seite. Viele Keys haben ein kostenloses Kontingent.</p></li>
             <li><button role="tab" type="button" aria-selected="false" aria-controls="faq-a" id="q1">Wo landen meine Fotos?</button><p class="faq-inline">Nur bei Google, zum Lesen. Alles andere bleibt in deinem Browser: Key, Fotos, dein Stück. In den Einstellungen löschst du es mit einem Klick.</p></li>
             <li><button role="tab" type="button" aria-selected="false" aria-controls="faq-a" id="q2">Wie genau liest die KI?</button><p class="faq-inline">Gut, aber nicht fehlerfrei. Darum meldet BassTab unsichere Takte, prüft jede Taktlänge und zeigt dir zu jedem Takt den Ausschnitt aus deinem Foto.</p></li>
             <li><button role="tab" type="button" aria-selected="false" aria-controls="faq-a" id="q3">Und meine Bleistift-Notizen?</button><p class="faq-inline">Die werden ignoriert. Notennamen über den Noten dienen der KI höchstens als Hinweis – gelesen wird der Druck.</p></li>
@@ -168,7 +169,7 @@
             <li><button role="tab" type="button" aria-selected="false" aria-controls="faq-a" id="q6">Klappt das am Handy?</button><p class="faq-inline">Dafür ist es gebaut: Foto direkt mit der Kamera, prüfen mit dem Daumen, PDF teilen.</p></li>
           </ul>
         </div>
-        <div class="faq-answer" id="faq-a" role="tabpanel" aria-labelledby="q0" aria-live="polite"></div>
+        <div class="faq-answer" id="faq-a" role="tabpanel" aria-labelledby="q0" aria-live="polite"><p class="faq-q"></p><p class="faq-text"></p></div>
       </section>
 
       <section class="cta" aria-labelledby="cta-title">

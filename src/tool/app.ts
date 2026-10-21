@@ -5,7 +5,8 @@ import './tool.css';
 import { h, icon, reducedMotion, toast } from './dom';
 import { prefs, session, savePrefs, saveSession, loadImages, resetSession, type StepId } from './state';
 import type { PreparedImage } from '../gemini';
-import { modelPicker } from './widgets';
+import { looksLikeKey, modelPicker } from './widgets';
+import { checkKey } from '../gemini';
 import { renderWelcome } from './steps/welcome';
 import { renderSource } from './steps/source';
 import { renderReading } from './steps/reading';
@@ -120,21 +121,65 @@ function renderProgress(step: StepId) {
 function openSettings() {
   const dlg = document.getElementById('dlg-settings') as HTMLDialogElement;
   const body = dlg.querySelector('.dlg-body')!;
-  const keyInput = h('input', { type: 'password', id: 'set-key', autocomplete: 'off', spellcheck: 'false', value: prefs.apiKey, placeholder: 'AIza…' });
+  const keyInput = h('input', { type: 'password', id: 'set-key', autocomplete: 'off', spellcheck: 'false', value: prefs.apiKey, placeholder: 'AQ.… oder AIza…' });
+  const keyStatus = h('p', { class: 'status', role: 'status' });
   const picker = modelPicker(prefs.model);
+  const showKeyState = () => {
+    keyStatus.className = 'status';
+    keyStatus.textContent = prefs.apiKey ? 'Ein Key ist gespeichert.' : 'Noch kein Key gespeichert – ohne Key gehen nur MusicXML und das Beispiel.';
+  };
+  showKeyState();
+
+  // Jede Änderung speichert sofort – ein Speichern-Knopf entfällt
+  const saveKey = async () => {
+    const key = keyInput.value.trim();
+    if (key === prefs.apiKey) return;
+    if (key && !looksLikeKey(key)) {
+      keyStatus.className = 'status error';
+      keyStatus.textContent = 'Das sieht nicht nach einem API-Key aus. Neue Keys beginnen mit „AQ.“, ältere mit „AIza“.';
+      return;
+    }
+    if (!key) {
+      prefs.apiKey = '';
+      savePrefs();
+      return showKeyState();
+    }
+    keyStatus.className = 'status busy';
+    keyStatus.textContent = 'Prüfe den Key bei Google …';
+    try {
+      await checkKey(key, picker.value());
+      prefs.apiKey = key;
+      savePrefs();
+      keyStatus.className = 'status ok';
+      keyStatus.textContent = 'Key geprüft und gespeichert.';
+    } catch (e) {
+      keyStatus.className = 'status error';
+      keyStatus.textContent = (e as Error).message;
+    }
+  };
+  keyInput.addEventListener('change', () => void saveKey());
+  picker.el.addEventListener('change', () => {
+    prefs.model = picker.value();
+    savePrefs();
+    toast('Modell gespeichert');
+  });
+
+  const section = (title: string, ...children: Node[]) =>
+    h('section', { class: 'set-section' }, h('h3', {}, title), ...children);
+
   body.replaceChildren(
-    h('label', { class: 'field', for: 'set-key' }, 'Google-AI-Studio-API-Key'),
-    h('div', { class: 'input-row' }, keyInput,
-      h('button', { class: 'btn quiet icon-only', type: 'button', 'aria-label': 'Key anzeigen', onclick: () => {
-        keyInput.type = keyInput.type === 'password' ? 'text' : 'password';
-      } }, icon('eye'))),
-    h('p', { class: 'help' }, 'Bleibt nur in diesem Browser. ', h('a', { href: 'https://aistudio.google.com/apikey', target: '_blank', rel: 'noopener' }, 'Key erstellen')),
-    h('p', { class: 'field' }, 'Modell'),
-    picker.el,
-    h('div', { class: 'danger-zone' },
-      h('p', {}, 'Alles aus diesem Browser löschen: Key, Fotos, aktuelles Stück.'),
-      h('button', { class: 'btn quiet danger', type: 'button', onclick: () => {
-        if (!confirm('Key, Fotos und das aktuelle Stück wirklich löschen?')) return;
+    section('Dein Gemini-API-Key',
+      h('div', { class: 'input-row' }, keyInput,
+        h('button', { class: 'btn quiet icon-only', type: 'button', 'aria-label': 'Key anzeigen', onclick: () => {
+          keyInput.type = keyInput.type === 'password' ? 'text' : 'password';
+        } }, icon('eye'))),
+      keyStatus,
+      h('p', { class: 'help' }, 'Neuen Key erstellen: ', h('a', { href: 'https://aistudio.google.com/apikey', target: '_blank', rel: 'noopener' }, 'aistudio.google.com/apikey'))),
+    section('Modell', picker.el),
+    section('Deine Daten',
+      h('p', { class: 'help' }, 'Key, Fotos und dein Stück liegen nur in diesem Browser. Zum Lesen geht das Foto mit deinem Key direkt an Google – BassTab hat keinen eigenen Server.'),
+      h('button', { class: 'btn danger', type: 'button', onclick: () => {
+        if (!confirm('Key, Fotos und das aktuelle Stück wirklich aus diesem Browser löschen?')) return;
         prefs.apiKey = '';
         prefs.onboarded = false;
         savePrefs();
@@ -145,11 +190,7 @@ function openSettings() {
       } }, icon('trash', 18), 'Alles löschen')),
   );
   dlg.onclose = () => {
-    if (dlg.returnValue !== 'save') return;
-    prefs.apiKey = keyInput.value.trim();
-    prefs.model = picker.value();
-    savePrefs();
-    toast('Gespeichert');
+    if (keyInput.value.trim() !== prefs.apiKey && looksLikeKey(keyInput.value)) void saveKey();
     if (current === 'source') show('source');
   };
   dlg.showModal();
