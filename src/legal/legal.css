@@ -1,0 +1,121 @@
+@import '../tokens.css';
+
+body.legal {
+  background: var(--paper);
+  color: var(--text);
+  font-size: 1.0625rem;
+  line-height: 1.6;
+}
+
+.legal-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px clamp(16px, 5vw, 72px);
+}
+
+.legal-bar .wordmark {
+  color: var(--ink);
+  font-weight: 800;
+  font-stretch: 150%;
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+  text-decoration: none;
+}
+
+.legal-bar a:not(.wordmark) {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.legal-main {
+  width: min(100% - 32px, 720px);
+  margin: clamp(32px, 6vw, 72px) auto clamp(72px, 9vw, 120px);
+}
+
+.legal-main h1 {
+  margin: 0 0 8px;
+  color: var(--ink);
+  font-size: clamp(2rem, 1.4rem + 2.6vw, 3.25rem);
+  line-height: 1.05;
+  font-weight: 800;
+  font-stretch: 125%;
+  letter-spacing: -0.02em;
+  hyphens: manual;
+  overflow-wrap: break-word;
+}
+
+.legal-main .stand {
+  margin: 0 0 40px;
+  color: var(--text-2);
+  font-size: 0.9375rem;
+}
+
+.legal-main h2 {
+  margin: 48px 0 12px;
+  color: var(--ink);
+  font-size: 1.375rem;
+  line-height: 1.2;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.legal-main h3 {
+  margin: 28px 0 8px;
+  color: var(--ink);
+  font-size: 1.0625rem;
+  font-weight: 700;
+}
+
+.legal-main p,
+.legal-main ul {
+  margin: 0 0 14px;
+}
+
+.legal-main ul {
+  padding-left: 1.25em;
+}
+
+.legal-main li + li {
+  margin-top: 6px;
+}
+
+.legal-main a {
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.legal-main address {
+  font-style: normal;
+}
+
+.legal-main .summary {
+  margin: 0 0 40px;
+  padding: clamp(20px, 3vw, 32px);
+  background: var(--tone);
+  color: var(--ink);
+}
+
+.legal-main .summary ul {
+  margin: 0;
+}
+
+.legal-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  padding: 32px clamp(16px, 5vw, 72px) 40px;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 0.875rem;
+}
+
+.legal-foot a {
+  color: var(--paper);
+}
+
+.legal-foot a[aria-current='page'] {
+  font-weight: 700;
+  text-decoration: none;
+}

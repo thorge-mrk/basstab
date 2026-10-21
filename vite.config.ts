@@ -13,6 +13,9 @@ export default defineConfig({
       input: {
         main: resolve(import.meta.dirname, 'index.html'),
         tool: resolve(import.meta.dirname, 'tool/index.html'),
+        impressum: resolve(import.meta.dirname, 'impressum/index.html'),
+        datenschutz: resolve(import.meta.dirname, 'datenschutz/index.html'),
+        nutzungsbedingungen: resolve(import.meta.dirname, 'nutzungsbedingungen/index.html'),
       },
     },
   },

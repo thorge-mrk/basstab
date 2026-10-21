@@ -178,6 +178,10 @@ function openSettings() {
     section('Modell', picker.el),
     section('Deine Daten',
       h('p', { class: 'help' }, 'Key, Fotos und dein Stück liegen nur in diesem Browser. Zum Lesen geht das Foto mit deinem Key direkt an Google – BassTab hat keinen eigenen Server.'),
+      h('p', { class: 'help legal-links' },
+        h('a', { href: '../datenschutz/' }, 'Datenschutz'), ' · ',
+        h('a', { href: '../nutzungsbedingungen/' }, 'Nutzungsbedingungen'), ' · ',
+        h('a', { href: '../impressum/' }, 'Impressum')),
       h('button', { class: 'btn danger', type: 'button', onclick: () => {
         if (!confirm('Key, Fotos und das aktuelle Stück wirklich aus diesem Browser löschen?')) return;
         prefs.apiKey = '';

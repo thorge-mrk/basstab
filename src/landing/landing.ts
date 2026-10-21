@@ -61,7 +61,7 @@ function story() {
     if (sheet.dataset.state === state) return;
     sheet.dataset.state = state;
     beats.forEach((b) => b.classList.toggle('is-active', b.dataset.state === state));
-    $$('.beat-dots span').forEach((d, i) => d.classList.toggle('is-on', beats[i]?.dataset.state === state));
+    $$('.beat-dots button').forEach((d, i) => d.classList.toggle('is-on', beats[i]?.dataset.state === state));
     clearInterval(readTimer);
     if (state === 'read') animateRead();
     if (state === 'check') {
@@ -88,34 +88,28 @@ function story() {
     readTimer = window.setInterval(step, reduce ? 0 : 420);
   };
 
-  // Desktop: Schritte scrollen am gepinnten Blatt vorbei. Telefon: Blatt bleibt stehen, Scrollen schaltet die Schritte.
+  // Desktop: Schritte scrollen am gepinnten Blatt vorbei. Telefon: Schritte unter dem Blatt zum Wischen.
   const phone = matchMedia('(max-width: 900px)');
-  const io = new IntersectionObserver((entries) => {
-    if (phone.matches) return;
+  const strip = $('.beats');
+  const onBeat = (forPhone: boolean) => (entries: IntersectionObserverEntry[]) => {
+    if (phone.matches !== forPhone) return;
     for (const e of entries) if (e.isIntersecting) setState((e.target as HTMLElement).dataset.state!);
-  }, { rootMargin: '-45% 0px -45% 0px' });
-  beats.forEach((b) => io.observe(b));
-  beats[0].classList.add('is-active');
-
-  const section = $('.story');
-  let ticking = false;
-  const onScroll = () => {
-    if (ticking || !phone.matches) return;
-    ticking = true;
-    requestAnimationFrame(() => {
-      ticking = false;
-      const r = section.getBoundingClientRect();
-      const p = Math.min(0.999, Math.max(0, -r.top / Math.max(1, section.offsetHeight - innerHeight)));
-      setState(beats[Math.floor(p * beats.length)].dataset.state!);
-    });
   };
-  addEventListener('scroll', onScroll, { passive: true });
-  addEventListener('resize', onScroll);
+  const desktopIo = new IntersectionObserver(onBeat(false), { rootMargin: '-45% 0px -45% 0px' });
+  const phoneIo = new IntersectionObserver(onBeat(true), { root: strip, threshold: 0.6 });
+  beats.forEach((b) => {
+    desktopIo.observe(b);
+    phoneIo.observe(b);
+  });
+  beats[0].classList.add('is-active');
+  $$('.beat-dots button').forEach((d, i) =>
+    d.addEventListener('click', () => strip.scrollTo({ left: beats[i].offsetLeft - beats[0].offsetLeft, behavior: reduce ? 'auto' : 'smooth' })));
 
   whenNear(sheet, async () => {
     const { ScoreView, texFor } = await loadEngine();
     await document.fonts.load('22px "Reenie Beanie"').catch(() => null);
-    const scale = Math.min(1.45, Math.max(0.8, $('.sheet-paper').clientWidth / 520));
+    // am Telefon kleiner, damit Blatt und Erklärung zusammen auf den Bildschirm passen
+    const scale = phone.matches ? Math.min(0.8, Math.max(0.58, $('.sheet-paper').clientWidth / 560)) : Math.min(1.45, Math.max(0.8, $('.sheet-paper').clientWidth / 520));
     const photoView = new ScoreView($('.sheet-photo'), { bare: true, ink: '#1f2523', effectFont: { family: 'Reenie Beanie', size: 30 }, scale, barsPerRow: 2 });
     const tabView = new ScoreView($('.sheet-tab'), { bare: true, scale, barsPerRow: 2 });
     photoView.onRendered = () => {
