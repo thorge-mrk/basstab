@@ -621,9 +621,36 @@ select {
   line-height: 1.5;
 }
 
+.mbox.is-fixed {
+  border-color: #b4540a;
+  background: rgb(180 84 10 / 0.14);
+}
+
+.mbox.is-fixed .mbox-num {
+  background: #b4540a;
+}
+
 .page-stage.is-done .mbox {
   background: rgb(6 82 92 / 0.06);
   transition: background-color 400ms ease;
+}
+
+.page-stage.is-done .mbox.is-fixed {
+  background: rgb(180 84 10 / 0.12);
+}
+
+.fix-legend {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.fix-legend::before {
+  content: '';
+  width: 14px;
+  height: 14px;
+  border: 2px solid #b4540a;
+  background: rgb(180 84 10 / 0.14);
 }
 
 .scan {

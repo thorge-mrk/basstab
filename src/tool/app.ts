@@ -5,7 +5,7 @@ import './tool.css';
 import { h, icon, reducedMotion, toast } from './dom';
 import { prefs, session, savePrefs, saveSession, loadImages, resetSession, type StepId } from './state';
 import type { PreparedImage } from '../gemini';
-import { looksLikeKey, modelPicker } from './widgets';
+import { looksLikeKey, modelPicker, verifyToggle } from './widgets';
 import { checkKey } from '../gemini';
 import { renderWelcome } from './steps/welcome';
 import { renderSource } from './steps/source';
@@ -175,7 +175,11 @@ function openSettings() {
         } }, icon('eye'))),
       keyStatus,
       h('p', { class: 'help' }, 'Neuen Key erstellen: ', h('a', { href: 'https://aistudio.google.com/apikey', target: '_blank', rel: 'noopener' }, 'aistudio.google.com/apikey'))),
-    section('Modell', picker.el),
+    section('Modell', picker.el, verifyToggle(prefs.verify, (on) => {
+      prefs.verify = on;
+      savePrefs();
+      toast(on ? 'Zweiter Durchgang an' : 'Zweiter Durchgang aus');
+    })),
     section('Deine Daten',
       h('p', { class: 'help' }, 'Key, Fotos und dein Stück liegen nur in diesem Browser. Zum Lesen geht das Foto mit deinem Key direkt an Google – BassTab hat keinen eigenen Server.'),
       h('p', { class: 'help legal-links' },

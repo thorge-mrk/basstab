@@ -84,3 +84,12 @@ export class MiniScore {
     this.view = null;
   }
 }
+
+/** Schalter für den zweiten Prüfdurchgang. */
+export function verifyToggle(initial: boolean, onChange: (on: boolean) => void): HTMLElement {
+  const box = h('input', { type: 'checkbox', checked: initial, onchange: () => onChange(box.checked) });
+  return h('label', { class: 'choice' }, box,
+    h('span', { class: 'choice-text' },
+      h('strong', {}, 'Zweiter Prüfdurchgang'),
+      h('span', {}, 'Gemini liest jede Zeile noch einmal und korrigiert Fehler. Deutlich genauer, dauert und kostet aber etwa doppelt so viel.')));
+}

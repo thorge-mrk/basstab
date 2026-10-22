@@ -37,9 +37,11 @@ export interface RecognitionResult {
   measures: RecognizedMeasure[];
   uncertain: Uncertainty[];
   meta: { title: string; composer: string; arranger: string };
+  /** Kopfangaben der Erkennung, für den zweiten Durchgang */
+  head: { key: string; time: string; tempo: number };
 }
 
-const SYSTEM_PROMPT = `You are an expert music engraver transcribing printed bass parts (bass guitar / double bass) from photos into a compact text notation called "BassTab notation". Accuracy of every pitch, rhythm and marking matters more than speed.
+export const SYSTEM_PROMPT = `You are an expert music engraver transcribing printed bass parts (bass guitar / double bass) from photos into a compact text notation called "BassTab notation". Accuracy of every pitch, rhythm and marking matters more than speed.
 
 ## How to read the page
 - Read ONLY the printed music. Handwritten pencil/pen annotations (note names, fingerings, arrows, crossed-out text) are NOT part of the music. You may use handwritten note names only as a hint when the print is ambiguous.
@@ -106,7 +108,7 @@ Return JSON matching the schema, measures in reading order.
   Never ask about: rests, whole-measure rests, measure length, pickups, the conventions above, pencil annotations, dynamics, articulations or text, or anything you can decide from the printed music.
   For each entry: a short, concrete question in German for the bassist (e.g. "Ist die zweite Note ein Gis oder ein G?") and 1–2 alternative readings of the WHOLE measure content in BassTab notation, each with every duration written explicitly, each adding up to the time signature and each differing from your main reading in pitch or rhythm of the notes. On a clean print this list is usually empty.`;
 
-const RESPONSE_SCHEMA = {
+export const RESPONSE_SCHEMA = {
   type: 'object',
   properties: {
     title: { type: 'string' },
@@ -147,7 +149,7 @@ const RESPONSE_SCHEMA = {
   required: ['title', 'key', 'time', 'measures', 'uncertain'],
 };
 
-interface RawResult {
+export interface RawResult {
   title?: string;
   composer?: string;
   arranger?: string;
@@ -227,7 +229,7 @@ function layoutOf(source: CanvasImageSource & { width: number; height: number })
   }
 }
 
-async function bitmapOf(img: PreparedImage): Promise<ImageBitmap | null> {
+export async function bitmapOf(img: PreparedImage): Promise<ImageBitmap | null> {
   if (!img.url) return null;
   try {
     return await createImageBitmap(await (await fetch(img.url)).blob());
@@ -253,7 +255,7 @@ function jpeg(source: ImageBitmap, sx: number, sy: number, sw: number, sh: numbe
  * Bildteile für Gemini: je Seite eine Übersicht und jede Notenzeile einzeln in voller Auflösung.
  * Ohne erkannte Zeilen geht die ganze Seite wie bisher.
  */
-const ULTRA = { level: PartMediaResolutionLevel.MEDIA_RESOLUTION_ULTRA_HIGH };
+export const ULTRA = { level: PartMediaResolutionLevel.MEDIA_RESOLUTION_ULTRA_HIGH };
 const MEDIUM = { level: PartMediaResolutionLevel.MEDIA_RESOLUTION_MEDIUM };
 
 async function imageParts(images: PreparedImage[]): Promise<Part[]> {
@@ -325,7 +327,6 @@ export interface RecognizeOptions {
 }
 
 export async function recognizeSheet(images: PreparedImage[], opts: RecognizeOptions): Promise<RecognitionResult> {
-  const ai = new GoogleGenAI({ apiKey: opts.apiKey });
   const parts = await imageParts(images);
   parts.push({ text: 'Transcribe the bass part on these pages into BassTab notation.' });
 
@@ -343,45 +344,15 @@ export async function recognizeSheet(images: PreparedImage[], opts: RecognizeOpt
     opts.onMeasure!(m, i);
   });
 
-  let useParts = parts;
-  const run = async (withThinking: boolean) => {
-    const stream = new MeasureStream(onMeasure);
-    const response = await ai.models.generateContentStream({
-      model: opts.model,
-      contents: [{ role: 'user', parts: useParts }],
-      config: {
-        systemInstruction: SYSTEM_PROMPT,
-        responseMimeType: 'application/json',
-        responseJsonSchema: RESPONSE_SCHEMA,
-        ...(withThinking ? { thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH } } : {}),
-        mediaResolution: MediaResolution.MEDIA_RESOLUTION_HIGH,
-        abortSignal: opts.signal,
-      },
-    });
-    for await (const chunk of response) {
-      stream.push(chunk.text ?? '');
+  const stream = new MeasureStream(onMeasure);
+  const text = await requestJson({
+    apiKey: opts.apiKey, model: opts.model, parts, system: SYSTEM_PROMPT, schema: RESPONSE_SCHEMA, signal: opts.signal,
+    onRestart: () => stream.reset(),
+    onText: (t) => {
+      stream.push(t);
       opts.onProgress?.(stream.text.length);
-    }
-    return stream.text;
-  };
-
-  let text: string;
-  try {
-    try {
-      text = await run(true);
-    } catch (e) {
-      // Kleinere Modelle (z. B. Flash-Lite) unterstützen evtl. kein thinkingLevel → ohne erneut versuchen
-      if (!(e instanceof ApiError) || e.status !== 400) throw e;
-      if (/media.?resolution/i.test(e.message)) {
-        // Modell ohne Auflösung pro Bild: global hoch reicht dann
-        useParts = parts.map(({ mediaResolution: _, ...p }) => p);
-        text = await run(true);
-      } else if (/think/i.test(e.message)) text = await run(false);
-      else throw e;
-    }
-  } catch (e) {
-    throw friendlyError(e, opts.model);
-  }
+    },
+  });
 
   let raw: RawResult;
   try {
@@ -394,10 +365,66 @@ export async function recognizeSheet(images: PreparedImage[], opts: RecognizeOpt
     measures: placeMeasures(raw.measures, images),
     uncertain: filterUncertain(raw),
     meta: { title: raw.title ?? '', composer: raw.composer ?? '', arranger: raw.arranger ?? '' },
+    head: { key: raw.key || 'C', time: raw.time || '4/4', tempo: raw.tempo ?? 0 },
   };
 }
 
-function friendlyError(e: unknown, model: string): Error {
+export interface JsonRequest {
+  apiKey: string;
+  model: string;
+  parts: Part[];
+  system: string;
+  schema: object;
+  signal?: AbortSignal;
+  onText?: (chunk: string) => void;
+  /** vor einem erneuten Versuch (gestreamter Text beginnt von vorn) */
+  onRestart?: () => void;
+}
+
+/**
+ * Gestreamte JSON-Anfrage mit gründlichem Nachdenken. Lehnt ein Modell Auflösung pro Bild oder
+ * die Denkstufe ab, wird ohne sie erneut gefragt.
+ */
+export async function requestJson(req: JsonRequest): Promise<string> {
+  const ai = new GoogleGenAI({ apiKey: req.apiKey });
+  let parts = req.parts;
+  let thinking = true;
+  for (let attempt = 0; ; attempt++) {
+    try {
+      let text = '';
+      const response = await ai.models.generateContentStream({
+        model: req.model,
+        contents: [{ role: 'user', parts }],
+        config: {
+          systemInstruction: req.system,
+          responseMimeType: 'application/json',
+          responseJsonSchema: req.schema,
+          ...(thinking ? { thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH } } : {}),
+          mediaResolution: MediaResolution.MEDIA_RESOLUTION_HIGH,
+          abortSignal: req.signal,
+        },
+      });
+      for await (const chunk of response) {
+        const t = chunk.text ?? '';
+        text += t;
+        req.onText?.(t);
+      }
+      return text;
+    } catch (e) {
+      const retry = attempt < 2 && e instanceof ApiError && e.status === 400;
+      if (retry && /media.?resolution/i.test(e.message)) {
+        // Modell ohne Auflösung pro Bild: global hoch reicht dann
+        parts = parts.map(({ mediaResolution: _, ...p }) => p);
+      } else if (retry && thinking && /think/i.test(e.message)) {
+        // kleinere Modelle kennen evtl. keine Denkstufe
+        thinking = false;
+      } else throw friendlyError(e, req.model);
+      req.onRestart?.();
+    }
+  }
+}
+
+export function friendlyError(e: unknown, model: string): Error {
   if (e instanceof ApiError) {
     if (e.status === 400 && /API key/i.test(e.message)) return new Error('Der API-Key ist ungültig. Prüfe ihn in den Einstellungen.');
     if (e.status === 403) return new Error('Zugriff verweigert. Ist der Key im AI Studio für die Gemini API freigeschaltet?');
@@ -424,9 +451,24 @@ export class MeasureStream {
   private escape = false;
   private objStart = -1;
   private count = 0;
+  private skip = 0;
   private done = false;
 
   constructor(private onMeasure?: (m: RecognizedMeasure, index: number) => void) {}
+
+  /** Für einen neuen Versuch: bereits gemeldete Takte werden nicht doppelt gemeldet. */
+  reset() {
+    this.text = '';
+    this.arrayStart = -1;
+    this.scan = 0;
+    this.depth = 0;
+    this.inString = false;
+    this.escape = false;
+    this.objStart = -1;
+    this.skip = this.count;
+    this.count = 0;
+    this.done = false;
+  }
 
   push(chunk: string) {
     this.text += chunk;
@@ -454,7 +496,9 @@ export class MeasureStream {
         this.depth--;
         if (this.depth === 0 && this.objStart >= 0) {
           try {
-            this.onMeasure(JSON.parse(t.slice(this.objStart, this.scan + 1)) as RecognizedMeasure, this.count++);
+            const m = JSON.parse(t.slice(this.objStart, this.scan + 1)) as RecognizedMeasure;
+            if (this.count >= this.skip) this.onMeasure(m, this.count);
+            this.count++;
           } catch {
             /* unvollständiges Objekt ignorieren */
           }

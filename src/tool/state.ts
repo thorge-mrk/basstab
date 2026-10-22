@@ -28,6 +28,8 @@ export interface Prefs {
   maxFret: number;
   barsPerRow: number;
   view: 'both' | 'tab' | 'score';
+  /** Zweiter Durchgang: jede Zeile wird gegen den Ausschnitt nachgeprüft */
+  verify: boolean;
 }
 
 const PREFIX = 'basstab.';
@@ -70,6 +72,7 @@ const defaultPrefs: Prefs = {
   maxFret: 20,
   barsPerRow: -1,
   view: 'both',
+  verify: true,
 };
 
 // Alte Schlüssel der ersten Version übernehmen (Key/Modell)

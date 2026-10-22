@@ -3,6 +3,7 @@
 import { h, reducedMotion } from '../dom';
 import { prefs, session, saveSession, emptySession } from '../state';
 import { recognizeSheet, type RecognizedMeasure } from '../../gemini';
+import { verifySheet } from '../../verify';
 import { parseNotation } from '../../score';
 import { MODELS } from '../../gemini';
 import type { Ctx } from '../app';
@@ -123,7 +124,7 @@ export function renderReading(root: HTMLElement, ctx: Ctx) {
   // --- Erkennung starten ---
   void (async () => {
     try {
-      const result = await recognizeSheet(images, {
+      let result = await recognizeSheet(images, {
         apiKey: prefs.apiKey,
         model: prefs.model,
         signal: abort.signal,
@@ -144,6 +145,32 @@ export function renderReading(root: HTMLElement, ctx: Ctx) {
       result.measures.forEach((m, i) => {
         if (boxEls[i] && m.box) place(boxEls[i], m.box);
       });
+
+      // zweiter Durchgang: jede Zeile gegen den Ausschnitt nachprüfen
+      let fixed = 0;
+      let failed: number[] = [];
+      if (prefs.verify) {
+        stage.classList.add('is-scanning');
+        const out = await verifySheet(images, result, {
+          apiKey: prefs.apiKey,
+          model: prefs.model,
+          signal: abort.signal,
+          onProgress: (done, total) => {
+            phase.textContent = total > 1
+              ? `Zweiter Durchgang: Gemini prüft jede Zeile nach … (${done} von ${total} Seiten)`
+              : 'Zweiter Durchgang: Gemini prüft jede Zeile nach …';
+          },
+        });
+        if (abort.signal.aborted) return;
+        stage.classList.remove('is-scanning');
+        result = out.result;
+        fixed = out.changed.length;
+        failed = out.failedPages;
+        for (const i of out.changed) {
+          boxEls[i]?.classList.add('is-fixed');
+          if (!reducedMotion()) boxEls[i]?.animate([{ transform: 'scale(1.06)' }, { transform: 'none' }], { duration: 320, easing: EASE_OUT });
+        }
+      }
       const { score } = parseNotation(result.notation);
       Object.assign(session, emptySession(), {
         source: 'photo',
@@ -155,9 +182,12 @@ export function renderReading(root: HTMLElement, ctx: Ctx) {
       saveSession();
       const u = result.uncertain.length;
       stage.classList.add('is-done');
-      phase.textContent = `Fertig: ${score.measures.length} Takte${u ? `, ${u} ${u === 1 ? 'Stelle' : 'Stellen'} zum Prüfen` : ', alles klar lesbar'}.`;
+      const fixedText = prefs.verify ? `, ${fixed ? `${fixed} im zweiten Durchgang korrigiert` : 'zweiter Durchgang ohne Korrektur'}` : '';
+      const failedText = failed.length ? ` Seite ${failed.join(', ')} konnte nicht nachgeprüft werden.` : '';
+      phase.textContent = `Fertig: ${score.measures.length} Takte${fixedText}${u ? `, ${u} ${u === 1 ? 'Stelle' : 'Stellen'} zum Prüfen` : ', alles klar lesbar'}.${failedText}`;
       clearInterval(tick);
       cancel.remove();
+      if (fixed) lastLine.after(h('p', { class: 'help fix-legend' }, 'orange: im zweiten Durchgang korrigiert'));
       const next = h('button', { class: 'btn primary', type: 'button', onclick: () => ctx.go(u ? 'review' : 'overview', { replace: true }) },
         u ? 'Unsichere Stellen prüfen' : 'Zum Gesamtbild');
       actions.append(next);
