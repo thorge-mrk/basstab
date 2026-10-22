@@ -2,6 +2,7 @@
 
 import { GoogleGenAI, MediaResolution, ThinkingLevel, ApiError, type Part } from '@google/genai';
 import { durationTicks, parseNotation } from './score';
+import { analyzePage, measureBoxes, type PageLayout } from './layout';
 
 export const MODELS = [
   { id: 'gemini-3.5-flash-lite', label: 'Gemini 3.5 Flash-Lite', hint: 'schnell und günstig – für saubere Fotos' },
@@ -16,6 +17,8 @@ export interface RecognizedMeasure {
   number: number;
   /** 1-basiert, Reihenfolge der hochgeladenen Fotos */
   page: number;
+  /** 1-basierte Notenzeile auf der Seite (aus der Layout-Erkennung) */
+  system?: number;
   box?: Box;
   repeatStart?: boolean;
   content: string;
@@ -42,7 +45,9 @@ const SYSTEM_PROMPT = `You are an expert music engraver transcribing printed bas
 - Read ONLY the printed music. Handwritten pencil/pen annotations (note names, fingerings, arrows, crossed-out text) are NOT part of the music. You may use handwritten note names only as a hint when the print is ambiguous.
 - Work system by system, measure by measure. Printed measure numbers at the start of systems help you keep count – use them to verify that you did not skip or duplicate a measure.
 - If the photo contains a tablature staff under the notation, use the tab numbers to double-check pitches (standard tuning E A D G, string 1 = G).
-- Multiple images are consecutive pages of the same part, in order. "page" is the 1-based image number.
+- The images come per page: first an overview of the whole page ("Seite p, Übersicht"), then every staff line of that page cut out at full resolution ("Seite p, Zeile s"). Read the notes from the line images – they are much sharper. Use the overview for the title, composer, tempo and to see how lines connect. The label of each line image also says how many measures the automatic barline detection found; it can be off by one or two (multi-measure rests, repeat signs at the start of a line) – the image is what counts.
+- Line images overlap a little at the top and bottom: only transcribe the staff in the middle of each line image, never notes of the neighbouring line.
+- Multiple pages are consecutive pages of the same part, in order. "page" is the page number from the label.
 
 ## Pitch = staff position (letter + octave, scientific pitch notation, C4 = middle C)
 Bass clef lines bottom→top: G2 B2 D3 F3 A3. Spaces bottom→top: A2 C3 E3 G3.
@@ -94,7 +99,7 @@ Barlines are given by the "end" field of each measure: "|" normal, "||" double b
 ## Output
 Return JSON matching the schema, measures in reading order.
 - title/composer/arranger exactly as printed ("" if not printed). key: e.g. "Ab", "F", "Eb", "G", "C" – from the number of flats/sharps (4 flats = Ab, 2 sharps = D, none = C). time: e.g. "4/4". tempo: BPM from the metronome mark or 0.
-- measures: one entry per printed measure, multi-measure rests as a single entry. "number" is the measure number (a multi-measure rest of 7 bars occupies 7 numbers; the next measure continues after them). "page" is the image it is on. "box" is the bounding box of that measure on its page as [ymin, xmin, ymax, xmax] normalized to 0–1000, from barline to barline horizontally and covering the staff plus notes above and below vertically.
+- measures: one entry per printed measure, multi-measure rests as a single entry, in reading order. "number" is the measure number (a multi-measure rest of 7 bars occupies 7 numbers; the next measure continues after them). "page" and "system" are the page and line number from the label of the line image the measure is on. "box" is only needed for pages sent as a whole without line images (then "system" is 0): the bounding box of the measure as [ymin, xmin, ymax, xmax] normalized to 0–1000.
 - uncertain: ONLY measures where something that changes what the bassist PLAYS is physically hard to read – blurry, cut off, covered by pencil or a fold – and two readings are both plausible. Typical: an accidental you cannot see clearly, a notehead between line and space, a dot or flag you cannot make out. At most one entry per measure.
   Never ask about: rests, whole-measure rests, measure length, pickups, the conventions above, pencil annotations, dynamics, articulations or text, or anything you can decide from the printed music.
   For each entry: a short, concrete question in German for the bassist (e.g. "Ist die zweite Note ein Gis oder ein G?") and 1–2 alternative readings of the WHOLE measure content in BassTab notation, each with every duration written explicitly, each adding up to the time signature and each differing from your main reading in pitch or rhythm of the notes. On a clean print this list is usually empty.`;
@@ -115,12 +120,13 @@ const RESPONSE_SCHEMA = {
         properties: {
           number: { type: 'integer' },
           page: { type: 'integer' },
+          system: { type: 'integer' },
           box: { type: 'array', items: { type: 'integer' }, minItems: 4, maxItems: 4 },
           repeatStart: { type: 'boolean' },
           content: { type: 'string' },
           end: { type: 'string', enum: ['|', '||', ':|', '|]'] },
         },
-        required: ['number', 'page', 'box', 'content', 'end'],
+        required: ['number', 'page', 'system', 'content', 'end'],
       },
     },
     uncertain: {
@@ -157,6 +163,8 @@ export interface PreparedImage {
   url: string;
   width: number;
   height: number;
+  /** Notenzeilen und Taktstriche, ohne KI erkannt */
+  layout?: PageLayout;
 }
 
 /** Skaliert große Fotos herunter (Gemini braucht keine 12 MP) und korrigiert die EXIF-Drehung. */
@@ -177,7 +185,106 @@ export async function prepareImage(file: Blob, maxSide = 2560): Promise<Prepared
   canvas.getContext('2d')!.drawImage(bmp, 0, 0, canvas.width, canvas.height);
   bmp.close();
   const url = canvas.toDataURL('image/jpeg', 0.88);
-  return { mimeType: 'image/jpeg', data: url.slice(url.indexOf(',') + 1), url, width: canvas.width, height: canvas.height };
+  return { mimeType: 'image/jpeg', data: url.slice(url.indexOf(',') + 1), url, width: canvas.width, height: canvas.height, layout: layoutOf(canvas) };
+}
+
+/** Layout-Analyse auf einer verkleinerten Graustufenkopie (schnell, reicht für Linien und Taktstriche). */
+function layoutOf(source: CanvasImageSource & { width: number; height: number }): PageLayout | undefined {
+  try {
+    const w = Math.min(1200, source.width);
+    const h = Math.round((source.height * w) / source.width);
+    const c = document.createElement('canvas');
+    c.width = w;
+    c.height = h;
+    const ctx = c.getContext('2d', { willReadFrequently: true })!;
+    ctx.drawImage(source, 0, 0, w, h);
+    const rgba = ctx.getImageData(0, 0, w, h).data;
+    const gray = new Uint8Array(w * h);
+    for (let i = 0, j = 0; i < gray.length; i++, j += 4) gray[i] = (rgba[j] * 77 + rgba[j + 1] * 150 + rgba[j + 2] * 29) >> 8;
+    return analyzePage({ width: w, height: h, data: gray });
+  } catch {
+    return undefined;
+  }
+}
+
+async function bitmapOf(img: PreparedImage): Promise<ImageBitmap | null> {
+  if (!img.url) return null;
+  try {
+    return await createImageBitmap(await (await fetch(img.url)).blob());
+  } catch {
+    return null;
+  }
+}
+
+function jpeg(source: ImageBitmap, sx: number, sy: number, sw: number, sh: number, maxW: number, quality: number): string {
+  const scale = Math.min(1, maxW / sw);
+  const c = document.createElement('canvas');
+  c.width = Math.max(1, Math.round(sw * scale));
+  c.height = Math.max(1, Math.round(sh * scale));
+  c.getContext('2d')!.drawImage(source, sx, sy, sw, sh, 0, 0, c.width, c.height);
+  const url = c.toDataURL('image/jpeg', quality);
+  return url.slice(url.indexOf(',') + 1);
+}
+
+/**
+ * Bildteile für Gemini: je Seite eine Übersicht und jede Notenzeile einzeln in voller Auflösung.
+ * Ohne erkannte Zeilen geht die ganze Seite wie bisher.
+ */
+async function imageParts(images: PreparedImage[]): Promise<Part[]> {
+  const parts: Part[] = [];
+  const crowded = images.length > 5; // Anfragegröße begrenzen
+  for (const [i, img] of images.entries()) {
+    const page = i + 1;
+    let systems = img.layout?.systems ?? [];
+    const bmp = await bitmapOf(img);
+    if (bmp && !img.layout) {
+      img.layout = layoutOf(bmp);
+      systems = img.layout?.systems ?? [];
+    }
+    if (!bmp || !systems.length) {
+      parts.push({ text: `Seite ${page} (ganze Seite, keine Zeilen erkannt – gib für jeden Takt "system": 0 und eine "box" an):` });
+      parts.push({ inlineData: { mimeType: img.mimeType, data: img.data } });
+      bmp?.close();
+      continue;
+    }
+    parts.push({ text: `Seite ${page}, Übersicht (${systems.length} Notenzeilen):` });
+    parts.push({ inlineData: { mimeType: 'image/jpeg', data: jpeg(bmp, 0, 0, bmp.width, bmp.height, 1536, 0.82) } });
+    systems.forEach((sys, k) => {
+      const [y0, x0, y1, x1] = sys.area;
+      const sx = (x0 / 1000) * bmp.width;
+      const sy = (y0 / 1000) * bmp.height;
+      const sw = ((x1 - x0) / 1000) * bmp.width;
+      const sh = ((y1 - y0) / 1000) * bmp.height;
+      const bars = sys.bars.filter((b) => b.strong).length;
+      parts.push({ text: `Seite ${page}, Zeile ${k + 1} (automatisch etwa ${bars} ${bars === 1 ? 'Takt' : 'Takte'} erkannt):` });
+      parts.push({ inlineData: { mimeType: 'image/jpeg', data: jpeg(bmp, sx, sy, sw, sh, crowded ? 2048 : 2560, 0.85) } });
+    });
+    bmp.close();
+  }
+  return parts;
+}
+
+/**
+ * Setzt die Takt-Boxen aus der Layout-Erkennung: Takte einer Zeile werden den erkannten
+ * Taktstrichen zugeordnet. Takte ohne erkannte Zeile behalten Geminis Schätzung.
+ */
+export function placeMeasures(measures: RecognizedMeasure[], images: Pick<PreparedImage, 'layout'>[]): RecognizedMeasure[] {
+  const groups = new Map<string, number[]>();
+  measures.forEach((m, i) => {
+    if (!m.system) return;
+    const k = `${m.page}:${m.system}`;
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k)!.push(i);
+  });
+  const out = measures.map((m) => ({ ...m }));
+  for (const [k, idx] of groups) {
+    const [page, system] = k.split(':').map(Number);
+    const sys = images[page - 1]?.layout?.systems[system - 1];
+    if (!sys) continue;
+    const boxes = measureBoxes(sys, idx.length);
+    idx.forEach((i, j) => (out[i].box = boxes[j]));
+  }
+  return out;
 }
 
 export interface RecognizeOptions {
@@ -191,15 +298,25 @@ export interface RecognizeOptions {
 
 export async function recognizeSheet(images: PreparedImage[], opts: RecognizeOptions): Promise<RecognitionResult> {
   const ai = new GoogleGenAI({ apiKey: opts.apiKey });
-  const parts: Part[] = [];
-  images.forEach((img, i) => {
-    parts.push({ text: `Seite ${i + 1}:` });
-    parts.push({ inlineData: { mimeType: img.mimeType, data: img.data } });
-  });
+  const parts = await imageParts(images);
   parts.push({ text: 'Transcribe the bass part on these pages into BassTab notation.' });
 
+  // vorläufige Box beim Streamen: k-ter Takt der Zeile → k-ter erkannter Takt
+  const seen = new Map<string, number>();
+  const onMeasure = opts.onMeasure && ((m: RecognizedMeasure, i: number) => {
+    const sys = m.system ? images[m.page - 1]?.layout?.systems[m.system - 1] : undefined;
+    if (sys) {
+      const k = `${m.page}:${m.system}`;
+      const j = seen.get(k) ?? 0;
+      seen.set(k, j + 1);
+      const b = sys.measures[j] ?? sys.area;
+      m = { ...m, box: b };
+    }
+    opts.onMeasure!(m, i);
+  });
+
   const run = async (withThinking: boolean) => {
-    const stream = new MeasureStream(opts.onMeasure);
+    const stream = new MeasureStream(onMeasure);
     const response = await ai.models.generateContentStream({
       model: opts.model,
       contents: [{ role: 'user', parts }],
@@ -240,7 +357,7 @@ export async function recognizeSheet(images: PreparedImage[], opts: RecognizeOpt
   }
   return {
     notation: toNotation(raw),
-    measures: raw.measures,
+    measures: placeMeasures(raw.measures, images),
     uncertain: filterUncertain(raw),
     meta: { title: raw.title ?? '', composer: raw.composer ?? '', arranger: raw.arranger ?? '' },
   };

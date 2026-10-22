@@ -1,11 +1,10 @@
-// Schritt 1: Fotos aufnehmen/auswählen, Modell wählen. Alternativ MusicXML oder Beispiel.
+// Schritt 1: Fotos aufnehmen/auswählen, Modell wählen. Alternativ MusicXML.
 
 import { append, h, icon, toast } from '../dom';
 import { prefs, savePrefs, session, saveSession, saveImages, emptySession } from '../state';
 import { MODELS, prepareImage } from '../../gemini';
 import { parseMusicXml } from '../../musicxml';
 import { serializeNotation } from '../../score';
-import { DEMO } from '../../demo';
 import type { Ctx } from '../app';
 
 export function renderSource(root: HTMLElement, ctx: Ctx) {
@@ -153,13 +152,6 @@ export function renderSource(root: HTMLElement, ctx: Ctx) {
       readBtn,
       h('div', { class: 'alt-actions' },
         h('button', { class: 'btn quiet', type: 'button', onclick: () => xml.click() }, icon('file', 18), 'MusicXML öffnen'),
-        h('button', { class: 'btn quiet', type: 'button', onclick: () => {
-          if (session.notation.trim() && session.source && !confirm('Das aktuelle Stück durch das Beispiel ersetzen?')) return;
-          Object.assign(session, emptySession(), { source: 'demo', notation: DEMO });
-          session.detected = { title: 'Todo tiene su final', composer: 'Hector Lavoe', arranger: 'Sebastian Wiesener' };
-          saveSession();
-          ctx.go('overview');
-        } }, 'Beispiel ansehen'),
       ),
       xml,
     ),

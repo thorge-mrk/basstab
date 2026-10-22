@@ -6,7 +6,7 @@ import { DEFAULT_MODEL } from '../gemini';
 export type StepId = 'welcome' | 'source' | 'reading' | 'review' | 'overview' | 'details' | 'done';
 
 export interface Session {
-  source: 'photo' | 'xml' | 'demo' | null;
+  source: 'photo' | 'xml' | null;
   notation: string;
   recognized: RecognizedMeasure[];
   uncertain: Uncertainty[];

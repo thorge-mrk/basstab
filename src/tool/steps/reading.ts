@@ -27,11 +27,14 @@ export function renderReading(root: HTMLElement, ctx: Ctx) {
   const img = h('img', { alt: 'Notenblatt, das gerade gelesen wird', src: images[0]?.url ?? '' });
   const boxes = h('div', { class: 'boxes', 'aria-hidden': 'true' });
   const scan = h('div', { class: 'scan', 'aria-hidden': 'true' });
-  const stage = h('div', { class: 'page-stage is-scanning' }, img, boxes, scan);
+  // Rahmen genau so groß wie das Foto, damit die Kästchen auf den Takten sitzen
+  const stage = h('div', { class: 'page-stage is-scanning' }, h('div', { class: 'page-frame' }, img, boxes, scan));
   const count = h('span', { class: 'count num' }, '0');
   const lastLine = h('code', { class: 'last-measure' }, ' ');
   const pageTabs = h('ol', { class: 'page-tabs', hidden: images.length < 2 },
-    ...images.map((im, i) => h('li', { 'data-page': String(i + 1) }, h('img', { src: im.url, alt: `Seite ${i + 1}` }), h('span', { class: 'num' }, '0'))));
+    ...images.map((im, i) => h('li', { 'data-page': String(i + 1) },
+      h('button', { type: 'button', 'aria-label': `Seite ${i + 1} zeigen`, onclick: () => showPage(i + 1) },
+        h('img', { src: im.url, alt: '' }), h('span', { class: 'num' }, '0')))));
   const cancel = h('button', { class: 'btn quiet', type: 'button', onclick: () => {
     abort.abort();
     ctx.go('source', { replace: true });
@@ -84,6 +87,13 @@ export function renderReading(root: HTMLElement, ctx: Ctx) {
     if (!reducedMotion()) img.animate([{ opacity: 0.4 }, { opacity: 1 }], { duration: 220, easing: EASE_OUT });
   };
 
+  const boxEls: HTMLElement[] = [];
+  const place = (el: HTMLElement, b: number[]) => {
+    const [y0, x0, y1, x1] = b.map((v) => Math.min(1000, Math.max(0, v)) / 10);
+    Object.assign(el.style, { top: `${y0}%`, left: `${x0}%`, height: `${Math.max(1, y1 - y0)}%`, width: `${Math.max(1, x1 - x0)}%` });
+    return [y0, x0, y1, x1];
+  };
+
   const reveal = (m: RecognizedMeasure) => {
     const n = Number(count.textContent) + 1;
     count.textContent = String(n);
@@ -94,9 +104,9 @@ export function renderReading(root: HTMLElement, ctx: Ctx) {
     if (tab) tab.textContent = String(pageCounts.get(page));
     showPage(page);
     if (!m.box || m.box.length !== 4) return;
-    const [y0, x0, y1, x1] = m.box.map((v) => Math.min(1000, Math.max(0, v)) / 10);
     const box = h('div', { class: 'mbox', 'data-page': String(page) }, h('span', { class: 'mbox-num num' }, String(m.number)));
-    Object.assign(box.style, { top: `${y0}%`, left: `${x0}%`, height: `${Math.max(1, y1 - y0)}%`, width: `${Math.max(1, x1 - x0)}%` });
+    const [, , y1] = place(box, m.box);
+    boxEls[n - 1] = box;
     box.hidden = page !== shownPage;
     boxes.append(box);
     // Scanlinie folgt dem zuletzt gelesenen System
@@ -130,6 +140,10 @@ export function renderReading(root: HTMLElement, ctx: Ctx) {
       while (queue.length || draining) await new Promise((r) => setTimeout(r, 60));
       if (abort.signal.aborted) return;
 
+      // endgültige Boxen: Takte einer Zeile auf die erkannten Taktstriche verteilt
+      result.measures.forEach((m, i) => {
+        if (boxEls[i] && m.box) place(boxEls[i], m.box);
+      });
       const { score } = parseNotation(result.notation);
       Object.assign(session, emptySession(), {
         source: 'photo',

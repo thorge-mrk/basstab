@@ -126,7 +126,7 @@ function openSettings() {
   const picker = modelPicker(prefs.model);
   const showKeyState = () => {
     keyStatus.className = 'status';
-    keyStatus.textContent = prefs.apiKey ? 'Ein Key ist gespeichert.' : 'Noch kein Key gespeichert – ohne Key gehen nur MusicXML und das Beispiel.';
+    keyStatus.textContent = prefs.apiKey ? 'Ein Key ist gespeichert.' : 'Noch kein Key gespeichert – ohne Key geht nur MusicXML.';
   };
   showKeyState();
 

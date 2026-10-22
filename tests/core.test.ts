@@ -3,7 +3,7 @@ import * as alphaTab from '@coderline/alphatab';
 import { parseNotation, serializeNotation } from '../src/score';
 import { computeFingering, DEFAULT_SETUP } from '../src/fingering';
 import { toAlphaTex } from '../src/alphatex';
-import { DEMO as SAMPLE } from '../src/demo';
+import { DEMO as SAMPLE } from './fixtures/sample';
 
 describe('Notation', () => {
   it('parst das Beispiel ohne Fehler und wendet die Tonart an', () => {
