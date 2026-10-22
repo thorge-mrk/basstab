@@ -927,7 +927,8 @@ body.landing {
 }
 
 .foot-name {
-  font-size: clamp(3.5rem, 13vw, 12rem);
+  /* passt immer in die Breite (Wortbreite ≈ 6,3 × Schriftgröße) */
+  font-size: min(12rem, calc((100vw - 48px) / 6.6));
   line-height: 0.9;
   font-weight: 800;
   font-stretch: 150%;

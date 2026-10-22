@@ -48,6 +48,8 @@ body {
   color: var(--text);
   font: 400 1rem/1.5 var(--font);
   font-optical-sizing: auto;
+  /* nie seitlich wackeln, falls ein Element doch übersteht (clip statt hidden: Sticky bleibt intakt) */
+  overflow-x: clip;
 }
 
 ::selection {
