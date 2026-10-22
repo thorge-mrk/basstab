@@ -698,6 +698,17 @@ select {
   overflow-wrap: anywhere;
 }
 
+.thumb-warn {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  padding: 0 6px;
+  background: var(--danger, #9b2c1f);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
 .page-tabs {
   display: flex;
   flex-wrap: wrap;

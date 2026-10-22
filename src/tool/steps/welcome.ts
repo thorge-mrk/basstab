@@ -76,7 +76,7 @@ export function renderWelcome(root: HTMLElement, ctx: Ctx) {
           icon('lock', 22),
           h('p', {}, h('strong', {}, 'Alles läuft bei dir im Browser.'), ' Kein Konto, kein BassTab-Server. Dein Key, deine Fotos und dein Stück bleiben auf diesem Gerät – nur zum Lesen geht das Foto mit deinem Key direkt an Google.')),
         h('ol', { class: 'howto' },
-          h('li', {}, h('strong', {}, 'Foto machen'), h('span', {}, 'Eine oder mehrere Seiten, gerade von oben.')),
+          h('li', {}, h('strong', {}, 'Foto oder PDF'), h('span', {}, 'Eine oder mehrere Seiten – ein PDF liest sich am genauesten.')),
           h('li', {}, h('strong', {}, 'Lesen lassen'), h('span', {}, 'Gemini liest Takt für Takt, mit Dynamik, Wiederholungen und allen Zeichen.')),
           h('li', {}, h('strong', {}, 'Bestätigen'), h('span', {}, 'Wo die KI unsicher ist, zeigt BassTab dir den Ausschnitt aus dem Foto.')),
           h('li', {}, h('strong', {}, 'PDF holen'), h('span', {}, 'Griffbild für 4-Saiter, wie ein Bassist es greifen würde.')),

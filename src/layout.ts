@@ -33,6 +33,10 @@ export interface LayoutSystem {
 
 export interface PageLayout {
   systems: LayoutSystem[];
+  /** Linienabstand im analysierten Bild (Pixel) – zu klein heißt: feiner analysieren */
+  spacing: number;
+  /** Bild zu klein aufgelöst, um Linien sicher zu trennen (dann ohne Zeilen weiter) */
+  lowRes?: boolean;
 }
 
 interface Staff {
@@ -78,7 +82,7 @@ export function binarize(g: Gray): Uint8Array {
 export const STRIPS = 30;
 
 /** Schwarzanteil je Bildzeile innerhalb eines senkrechten Streifens, leicht geglättet. */
-function rowProfile(bin: Uint8Array, w: number, h: number, xa: number, xb: number): Float32Array {
+export function rowProfile(bin: Uint8Array, w: number, h: number, xa: number, xb: number): Float32Array {
   const raw = new Float32Array(h);
   const sw = xb - xa;
   for (let y = 0; y < h; y++) {
@@ -94,7 +98,7 @@ function rowProfile(bin: Uint8Array, w: number, h: number, xa: number, xb: numbe
 }
 
 /** Typischer Linienabstand der Seite (häufigster Abstand zweier Linien). */
-function estimateSpacing(profiles: Float32Array[], h: number): number {
+export function estimateSpacing(profiles: Float32Array[], h: number): number {
   const hist = new Float32Array(Math.ceil(h / 30) + 2);
   for (const f of profiles) {
     const lines: number[] = [];
@@ -279,6 +283,10 @@ function traceStaff(bin: Uint8Array, w: number, h: number, xs: number[], tops: n
   }
   if (start >= 0 && (!best || lastOn - start > best[1] - best[0])) best = [start, lastOn];
   if (!best || best[1] - best[0] < w * 0.15) return null;
+  // Textzeilen treffen die „Linien“ nur stellenweise, echte Notenlinien laufen durch
+  let covered = 0;
+  for (let x = best[0]; x <= best[1]; x++) if (present(x)) covered++;
+  if (covered / (best[1] - best[0] + 1) < 0.55) return null;
   const bottom = top.map((t) => t + 4 * d);
   return { top, bottom, spacing: d, x0: best[0], x1: best[1] };
 }
@@ -378,6 +386,7 @@ export function analyzePage(g: Gray): PageLayout {
   const { width: w, height: h } = g;
   const bin = binarize(g);
   const staves = findStaves(bin, w, h);
+  const spacing = staves.length ? [...staves.map((s) => s.spacing)].sort((a, b) => a - b)[staves.length >> 1] : 0;
   const ny = (y: number) => Math.max(0, Math.min(1000, Math.round((y / h) * 1000)));
   const nx = (x: number) => Math.max(0, Math.min(1000, Math.round((x / w) * 1000)));
 
@@ -412,7 +421,7 @@ export function analyzePage(g: Gray): PageLayout {
     sys.measures = boxesFor(sys, [sys.staff[1], ...sys.bars.filter((b) => b.strong).map((b) => b.x)]);
     return sys;
   });
-  return { systems };
+  return { systems, spacing };
 }
 
 /** Boxen zwischen Grenzen; Höhe folgt dem Profil der Zeile. */

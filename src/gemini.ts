@@ -1,6 +1,6 @@
 // Notenerkennung aus Fotos mit Gemini (Google AI Studio API-Key, läuft im Browser).
 
-import { GoogleGenAI, MediaResolution, ThinkingLevel, ApiError, type Part } from '@google/genai';
+import { GoogleGenAI, MediaResolution, PartMediaResolutionLevel, ThinkingLevel, ApiError, type Part } from '@google/genai';
 import { durationTicks, parseNotation } from './score';
 import { analyzePage, measureBoxes, type PageLayout } from './layout';
 
@@ -54,6 +54,8 @@ Bass clef lines bottom→top: G2 B2 D3 F3 A3. Spaces bottom→top: A2 C3 E3 G3.
 Below the staff: F2 (space under bottom line), E2 (first ledger line), D2, C2 (second ledger line).
 Above the staff: B3 (space above top line), C4 (first ledger line), D4, E4 (second ledger line), F4, G4 (third ledger line).
 Treble clef lines: E4 G4 B4 D5 F5, spaces F4 A4 C5 E5.
+Tenor clef (C clef on the 4th line, common in cello and bassoon parts) lines: D3 F3 A3 C4 E4, spaces E3 G3 B3 D4. Alto clef (C clef on the middle line) lines: F3 A3 C4 E4 G4. A "8" under a treble clef means one octave lower. Watch for clef changes inside a line.
+Determine every pitch by counting lines and spaces from the nearest staff line, including ledger lines one by one – never guess from the general contour. Stem direction does not change the pitch. Check each measure twice before moving on.
 Write the letter of the staff position. Write an accidental ONLY if one is printed directly in front of that note: "#" sharp, "b" flat, "n" natural, "x" double sharp, "bb" double flat. Do NOT apply the key signature yourself and do NOT repeat accidentals that carry through the measure – the software does that automatically.
 Examples: printed note on the top space with a sharp → "G#3". Same note later in the measure without accidental → "G3". A natural sign on the second line → "Bn2".
 
@@ -188,10 +190,12 @@ export async function prepareImage(file: Blob, maxSide = 2560): Promise<Prepared
   return { mimeType: 'image/jpeg', data: url.slice(url.indexOf(',') + 1), url, width: canvas.width, height: canvas.height, layout: layoutOf(canvas) };
 }
 
-/** Layout-Analyse auf einer verkleinerten Graustufenkopie (schnell, reicht für Linien und Taktstriche). */
+/**
+ * Layout-Analyse auf einer Graustufenkopie. Zuerst verkleinert (schnell); sind die Noten klein im Bild
+ * (weiter Rand, Querformat, Screenshot), wird feiner analysiert, bis die Linien gut 10 px auseinander liegen.
+ */
 function layoutOf(source: CanvasImageSource & { width: number; height: number }): PageLayout | undefined {
-  try {
-    const w = Math.min(1200, source.width);
+  const run = (w: number) => {
     const h = Math.round((source.height * w) / source.width);
     const c = document.createElement('canvas');
     c.width = w;
@@ -202,6 +206,22 @@ function layoutOf(source: CanvasImageSource & { width: number; height: number })
     const gray = new Uint8Array(w * h);
     for (let i = 0, j = 0; i < gray.length; i++, j += 4) gray[i] = (rgba[j] * 77 + rgba[j + 1] * 150 + rgba[j + 2] * 29) >> 8;
     return analyzePage({ width: w, height: h, data: gray });
+  };
+  try {
+    const first = Math.min(1200, source.width);
+    let width = first;
+    let layout = run(first);
+    if (source.width > first && (!layout.systems.length || layout.spacing < 8)) {
+      const finer = layout.systems.length ? Math.round((first * 11) / layout.spacing) : source.width;
+      width = Math.min(source.width, Math.max(first + 200, finer));
+      const again = run(width);
+      if (again.systems.length >= layout.systems.length) layout = again;
+      else width = first;
+    }
+    // Linien enger als ~5 px im Original lassen sich nicht sicher trennen – dann lieber ohne Zeilen
+    const native = (layout.spacing * source.width) / width;
+    if (!layout.systems.length || native < 5) return { systems: [], spacing: native, lowRes: native > 0 && native < 5 };
+    return layout;
   } catch {
     return undefined;
   }
@@ -216,12 +236,15 @@ async function bitmapOf(img: PreparedImage): Promise<ImageBitmap | null> {
   }
 }
 
-function jpeg(source: ImageBitmap, sx: number, sy: number, sw: number, sh: number, maxW: number, quality: number): string {
-  const scale = Math.min(1, maxW / sw);
+/** JPEG-Ausschnitt; schmale Ausschnitte werden auf minW vergrößert, damit Gemini kleine Noten groß sieht. */
+function jpeg(source: ImageBitmap, sx: number, sy: number, sw: number, sh: number, maxW: number, quality: number, minW = 0): string {
+  const scale = sw > maxW ? maxW / sw : sw < minW ? minW / sw : 1;
   const c = document.createElement('canvas');
   c.width = Math.max(1, Math.round(sw * scale));
   c.height = Math.max(1, Math.round(sh * scale));
-  c.getContext('2d')!.drawImage(source, sx, sy, sw, sh, 0, 0, c.width, c.height);
+  const ctx = c.getContext('2d')!;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(source, sx, sy, sw, sh, 0, 0, c.width, c.height);
   const url = c.toDataURL('image/jpeg', quality);
   return url.slice(url.indexOf(',') + 1);
 }
@@ -230,6 +253,9 @@ function jpeg(source: ImageBitmap, sx: number, sy: number, sw: number, sh: numbe
  * Bildteile für Gemini: je Seite eine Übersicht und jede Notenzeile einzeln in voller Auflösung.
  * Ohne erkannte Zeilen geht die ganze Seite wie bisher.
  */
+const ULTRA = { level: PartMediaResolutionLevel.MEDIA_RESOLUTION_ULTRA_HIGH };
+const MEDIUM = { level: PartMediaResolutionLevel.MEDIA_RESOLUTION_MEDIUM };
+
 async function imageParts(images: PreparedImage[]): Promise<Part[]> {
   const parts: Part[] = [];
   const crowded = images.length > 5; // Anfragegröße begrenzen
@@ -243,12 +269,14 @@ async function imageParts(images: PreparedImage[]): Promise<Part[]> {
     }
     if (!bmp || !systems.length) {
       parts.push({ text: `Seite ${page} (ganze Seite, keine Zeilen erkannt – gib für jeden Takt "system": 0 und eine "box" an):` });
-      parts.push({ inlineData: { mimeType: img.mimeType, data: img.data } });
+      // kleine Bilder vergrößern, damit Gemini die Noten in voller Detailstufe sieht
+      const data = bmp && bmp.width < 2000 ? jpeg(bmp, 0, 0, bmp.width, bmp.height, 2560, 0.9, 2000) : img.data;
+      parts.push({ inlineData: { mimeType: bmp && bmp.width < 2000 ? 'image/jpeg' : img.mimeType, data }, mediaResolution: ULTRA });
       bmp?.close();
       continue;
     }
     parts.push({ text: `Seite ${page}, Übersicht (${systems.length} Notenzeilen):` });
-    parts.push({ inlineData: { mimeType: 'image/jpeg', data: jpeg(bmp, 0, 0, bmp.width, bmp.height, 1536, 0.82) } });
+    parts.push({ inlineData: { mimeType: 'image/jpeg', data: jpeg(bmp, 0, 0, bmp.width, bmp.height, 1536, 0.82) }, mediaResolution: MEDIUM });
     systems.forEach((sys, k) => {
       const [y0, x0, y1, x1] = sys.area;
       const sx = (x0 / 1000) * bmp.width;
@@ -257,7 +285,7 @@ async function imageParts(images: PreparedImage[]): Promise<Part[]> {
       const sh = ((y1 - y0) / 1000) * bmp.height;
       const bars = sys.bars.filter((b) => b.strong).length;
       parts.push({ text: `Seite ${page}, Zeile ${k + 1} (automatisch etwa ${bars} ${bars === 1 ? 'Takt' : 'Takte'} erkannt):` });
-      parts.push({ inlineData: { mimeType: 'image/jpeg', data: jpeg(bmp, sx, sy, sw, sh, crowded ? 2048 : 2560, 0.85) } });
+      parts.push({ inlineData: { mimeType: 'image/jpeg', data: jpeg(bmp, sx, sy, sw, sh, crowded ? 2048 : 2560, 0.88, 1600) }, mediaResolution: ULTRA });
     });
     bmp.close();
   }
@@ -315,11 +343,12 @@ export async function recognizeSheet(images: PreparedImage[], opts: RecognizeOpt
     opts.onMeasure!(m, i);
   });
 
+  let useParts = parts;
   const run = async (withThinking: boolean) => {
     const stream = new MeasureStream(onMeasure);
     const response = await ai.models.generateContentStream({
       model: opts.model,
-      contents: [{ role: 'user', parts }],
+      contents: [{ role: 'user', parts: useParts }],
       config: {
         systemInstruction: SYSTEM_PROMPT,
         responseMimeType: 'application/json',
@@ -342,7 +371,12 @@ export async function recognizeSheet(images: PreparedImage[], opts: RecognizeOpt
       text = await run(true);
     } catch (e) {
       // Kleinere Modelle (z. B. Flash-Lite) unterstützen evtl. kein thinkingLevel → ohne erneut versuchen
-      if (e instanceof ApiError && e.status === 400 && /think/i.test(e.message)) text = await run(false);
+      if (!(e instanceof ApiError) || e.status !== 400) throw e;
+      if (/media.?resolution/i.test(e.message)) {
+        // Modell ohne Auflösung pro Bild: global hoch reicht dann
+        useParts = parts.map(({ mediaResolution: _, ...p }) => p);
+        text = await run(true);
+      } else if (/think/i.test(e.message)) text = await run(false);
       else throw e;
     }
   } catch (e) {

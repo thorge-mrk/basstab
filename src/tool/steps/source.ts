@@ -2,7 +2,8 @@
 
 import { append, h, icon, toast } from '../dom';
 import { prefs, savePrefs, session, saveSession, saveImages, emptySession } from '../state';
-import { MODELS, prepareImage } from '../../gemini';
+import { MODELS, prepareImage, type PreparedImage } from '../../gemini';
+import { isPdf, pdfPages } from '../../pdf';
 import { parseMusicXml } from '../../musicxml';
 import { serializeNotation } from '../../score';
 import type { Ctx } from '../app';
@@ -11,7 +12,7 @@ export function renderSource(root: HTMLElement, ctx: Ctx) {
   const thumbs = h('ol', { class: 'thumbs', 'aria-label': 'Seiten' });
   const readBtn = h('button', { class: 'btn primary', type: 'button' });
   const camera = h('input', { type: 'file', accept: 'image/*', capture: 'environment', hidden: true });
-  const gallery = h('input', { type: 'file', accept: 'image/*,.heic,.heif', multiple: true, hidden: true });
+  const gallery = h('input', { type: 'file', accept: 'image/*,.heic,.heif,application/pdf,.pdf', multiple: true, hidden: true });
   const xml = h('input', { type: 'file', accept: '.musicxml,.xml,application/vnd.recordare.musicxml+xml,text/xml', hidden: true });
   const busy = h('p', { class: 'status', role: 'status' });
 
@@ -20,6 +21,7 @@ export function renderSource(root: HTMLElement, ctx: Ctx) {
       h('li', { class: 'thumb' },
         img.url ? h('img', { src: img.url, alt: `Seite ${i + 1}` }) : h('span', { class: 'thumb-placeholder' }, 'HEIC'),
         h('span', { class: 'thumb-num' }, String(i + 1)),
+        tooSmall(img) ? h('span', { class: 'thumb-warn', title: 'Sehr klein aufgelöst' }, 'unscharf') : null,
         h('span', { class: 'thumb-tools' },
           i > 0 ? h('button', { type: 'button', 'aria-label': `Seite ${i + 1} nach vorne`, onclick: () => move(i, -1) }, icon('left', 16)) : null,
           h('button', { type: 'button', 'aria-label': `Seite ${i + 1} entfernen`, onclick: () => remove(i) }, icon('close', 16)),
@@ -45,15 +47,23 @@ export function renderSource(root: HTMLElement, ctx: Ctx) {
   };
 
   const add = async (files: Iterable<File>) => {
-    const list = [...files].filter((f) => f.type.startsWith('image/') || /\.(heic|heif)$/i.test(f.name));
+    const list = [...files].filter((f) => f.type.startsWith('image/') || /\.(heic|heif)$/i.test(f.name) || isPdf(f));
     if (!list.length) return;
     busy.className = 'status busy';
-    busy.textContent = list.length === 1 ? 'Foto wird vorbereitet …' : `${list.length} Fotos werden vorbereitet …`;
+    busy.textContent = list.some(isPdf) ? 'PDF wird geöffnet …' : list.length === 1 ? 'Foto wird vorbereitet …' : `${list.length} Fotos werden vorbereitet …`;
+    const before = ctx.images.length;
     try {
-      for (const f of list) ctx.images.push(await prepareImage(f));
+      for (const f of list) {
+        if (isPdf(f)) for (const pageBlob of await pdfPages(f)) ctx.images.push(await prepareImage(pageBlob));
+        else ctx.images.push(await prepareImage(f));
+      }
       await saveImages(ctx.images);
-    } catch {
-      toast('Ein Foto ließ sich nicht öffnen. Versuch es als JPG oder PNG.', 'error');
+    } catch (err) {
+      console.error(err);
+      toast('Eine Datei ließ sich nicht öffnen. Versuch es als JPG, PNG oder PDF.', 'error');
+    }
+    if (ctx.images.slice(before).some(tooSmall)) {
+      toast('Mindestens eine Seite ist sehr klein aufgelöst – die Noten werden dann oft falsch gelesen. Besser: das PDF oder ein Foto mit mehr Pixeln.', 'error');
     }
     busy.className = 'status';
     busy.textContent = '';
@@ -70,9 +80,9 @@ export function renderSource(root: HTMLElement, ctx: Ctx) {
   const dropzone = h('div', { class: 'dropzone' },
     h('div', { class: 'drop-actions' },
       h('button', { class: 'btn big', type: 'button', onclick: () => camera.click() }, icon('camera', 22), 'Foto aufnehmen'),
-      h('button', { class: 'btn big', type: 'button', onclick: () => gallery.click() }, icon('images', 22), 'Fotos auswählen'),
+      h('button', { class: 'btn big', type: 'button', onclick: () => gallery.click() }, icon('images', 22), 'Fotos oder PDF'),
     ),
-    h('p', { class: 'drop-hint' }, 'oder Bilder hierher ziehen'),
+    h('p', { class: 'drop-hint' }, 'oder Bilder und PDFs hierher ziehen'),
     thumbs,
     camera, gallery,
   );
@@ -140,6 +150,7 @@ export function renderSource(root: HTMLElement, ctx: Ctx) {
       h('aside', { class: 'tips', 'aria-labelledby': 'tips-title' },
         h('h2', { id: 'tips-title' }, 'So liest Gemini am besten'),
         h('ul', {},
+          h('li', {}, 'Hast du ein PDF? Das liest Gemini am genauesten'),
           h('li', {}, 'Gerade von oben, ganze Seite im Bild'),
           h('li', {}, 'Helles Licht, kein Schatten über den Noten'),
           h('li', {}, 'Bleistift-Notizen sind okay – sie werden ignoriert'),
@@ -157,4 +168,9 @@ export function renderSource(root: HTMLElement, ctx: Ctx) {
     ),
   ]);
   update();
+}
+
+/** Linien zu eng für eine sichere Erkennung, oder schlicht zu wenige Pixel. */
+function tooSmall(img: PreparedImage): boolean {
+  return !!img.layout?.lowRes || (img.width > 0 && Math.max(img.width, img.height) < 1000);
 }
